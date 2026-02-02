@@ -6,7 +6,7 @@
   "mpd_host": "localhost",
   "mpd_port": 6600,
   "encoder": {
-    "enabled": true,
+    "enabled": false,
     "pin_a": 17,
     "pin_b": 27,
     "pin_sw": 22

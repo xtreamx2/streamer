@@ -1,9 +1,10 @@
 # Streamer Audio – CHANGE LOG
 
-## 0.06a1 - 0.06a3 – dodanie daemona oled +Poprawki
+## 0.06a1 - 0.06a4 – dodanie daemona oled +Poprawki
 - Dodanie grafik oled
 - poprawki instalatora
 - naprawa błędnych nazw plików/folderów
+- brak enkodera nie psuje projektu
 
 ## 0.05a3 – Poprawki
 - Naprawiono wyświetlanie OLED
