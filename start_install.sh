@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.05a"
+SOFT_VERSION="0.05a2"
 
 # Kolory
 RED="\e[31m"
@@ -152,8 +152,10 @@ pause_step
 echo -e "${BLUE}Krok 7: Autodetekcja OLED${RESET}"
 if sudo i2cdetect -y 1 | grep -q "3c"; then
     log "OLED wykryty."
+    OLED_PRESENT=1
 else
     log "OLED nie wykryty."
+    OLED_PRESENT=0
 fi
 pause_step
 
@@ -170,7 +172,11 @@ if mpc playlist | grep -q "$RADIO_URL"; then
 else
     mpc clear
     mpc add "$RADIO_URL"
-    mpc save radio
+
+    if ! mpc lsplaylists | grep -q "^radio$"; then
+        mpc save radio
+    fi
+
     mpc volume 30
     mpc play
     RADIO_NEW=1
@@ -180,36 +186,40 @@ fi
 pause_step
 
 # -----------------------------------------------
-# 9. Test DAC (test.wav stereo)
+# 9. Test DAC (test.wav stereo 400 Hz)
 # -----------------------------------------------
 echo -e "${BLUE}Krok 9: Test DAC${RESET}"
 
 TEST_WAV="$MEDIA_DIR/test.wav"
 
-if [ ! -f "$TEST_WAV" ]; then
-    log "Generuję test.wav (800 Hz, stereo, 0.5 s)."
-    sox -n -r 48000 -b 16 -c 2 "$TEST_WAV" synth 0.5 sine 800
-fi
+# zawsze nadpisujemy test.wav
+log "Generuję test.wav (400 Hz, stereo, 0.5 s)."
+sox -n -r 48000 -b 16 -c 2 "$TEST_WAV" synth 0.5 sine 400
 
 mpc stop >/dev/null 2>&1
 sudo systemctl stop mpd
 
-aplay "$TEST_WAV" -D hw:0,0
+aplay "$TEST_WAV" -D plughw:0,0
 log "Test DAC zakończony."
 pause_step
 
 # -----------------------------------------------
-# 10. Test OLED
+# 10. Test OLED (bez wysypywania)
 # -----------------------------------------------
 echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
+if [ "$OLED_PRESENT" -eq 1 ]; then
 python3 << 'EOF'
 import board, busio
 from adafruit_ssd1306 import SSD1306_I2C
 from PIL import Image, ImageDraw, ImageFont
 
-i2c = busio.I2C(board.SCL, board.SDA)
-display = SSD1306_I2C(128, 64, i2c, addr=0x3C)
+try:
+    i2c = busio.I2C(board.SCL, board.SDA)
+    display = SSD1306_I2C(128, 64, i2c, addr=0x3C)
+except Exception as e:
+    print("OLED not detected:", e)
+    exit(0)
 
 display.fill(0)
 display.contrast(25)
@@ -225,8 +235,11 @@ draw.text(((128-w)//2, (64-h)//2), text, font=font, fill=255)
 display.image(image)
 display.show()
 EOF
+    log "OLED wyświetlił napis STREAMER."
+else
+    log "OLED pominięty – brak urządzenia."
+fi
 
-log "OLED wyświetlił napis STREAMER."
 pause_step
 
 # -----------------------------------------------

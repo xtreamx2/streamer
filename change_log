@@ -1,5 +1,9 @@
 # Streamer Audio – CHANGE LOG
 
+## 0.05a2 – Poprawki
+- Naprawiono błąd OLED (przy nie wykryciu ekranu phyton sie wysypywał)
+- Poprawiono dźwięk kontrolny - teraz jest 400hz stereo
+
 ## 0.05a – Pobieranie changelog z repo + OLED test
 - Instalator pobiera changelog z GitLab do katalogu `$HOME/streamer/changelog`.
 - Usunięto lokalne generowanie changelog.
