@@ -2,7 +2,6 @@
 ---
 
 # 🇬🇧 **README_EN.md**
-*(skopiuj do: `README_EN.md`)*
 
 ```markdown
 # Streamer Audio – Raspberry Pi I2S DAC + OLED
