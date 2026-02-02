@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.05a2"
+SOFT_VERSION="0.05a3"
 
 # Kolory
 RED="\e[31m"
@@ -210,6 +210,7 @@ echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
 if [ "$OLED_PRESENT" -eq 1 ]; then
 python3 << 'EOF'
+import time
 import board, busio
 from adafruit_ssd1306 import SSD1306_I2C
 from PIL import Image, ImageDraw, ImageFont
@@ -221,21 +222,34 @@ except Exception as e:
     print("OLED not detected:", e)
     exit(0)
 
-display.fill(0)
-display.contrast(25)
+# Minimalna jasność (realne ~10%)
+display.contrast(1)
 
+# Przygotowanie obrazu
 image = Image.new("1", (128, 64))
 draw = ImageDraw.Draw(image)
 font = ImageFont.load_default()
 
 text = "STREAMER"
-w, h = draw.textsize(text, font=font)
-draw.text(((128-w)//2, (64-h)//2), text, font=font, fill=255)
+bbox = draw.textbbox((0, 0), text, font=font)
+w = bbox[2] - bbox[0]
+h = bbox[3] - bbox[1]
 
+draw.text(((128 - w) // 2, (64 - h) // 2), text, font=font, fill=255)
+
+# Wyświetlenie
 display.image(image)
 display.show()
+
+# Czekamy 2 sekundy
+time.sleep(2)
+
+# Wygaszenie ekranu
+display.fill(0)
+display.show()
+
 EOF
-    log "OLED wyświetlił napis STREAMER."
+    log "OLED test zakończony (niska jasność + wygaszenie)."
 else
     log "OLED pominięty – brak urządzenia."
 fi

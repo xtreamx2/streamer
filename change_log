@@ -1,5 +1,10 @@
 # Streamer Audio – CHANGE LOG
 
+## 0.05a3 – Poprawki
+- Naprawiono wyświetlanie OLED
+- Ekran automatycznie wygasza się pozakończeniu testu
+- jasność 1% by nie wypalać pikseli
+
 ## 0.05a2 – Poprawki
 - Naprawiono błąd OLED (przy nie wykryciu ekranu phyton sie wysypywał)
 - Poprawiono dźwięk kontrolny - teraz jest 400hz stereo
