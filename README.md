@@ -61,7 +61,7 @@ Projekt jest rozwijany z naciskiem na:
 ### Instalacja przez `curl`
 
 ```bash
-curl -s https://gitlab.com/aloisy/start_install.sh -o install.sh
+curl -s https://gitlab.com/aloisy/streamer/-/raw/master/start_install.sh -o install.sh
 chmod +x install.sh
 ./install.sh
 
