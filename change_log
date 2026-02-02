@@ -1,5 +1,10 @@
 # Streamer Audio – CHANGE LOG
 
+## 0.06a1 - 0.06a3 – dodanie daemona oled +Poprawki
+- Dodanie grafik oled
+- poprawki instalatora
+- naprawa błędnych nazw plików/folderów
+
 ## 0.05a3 – Poprawki
 - Naprawiono wyświetlanie OLED
 - Ekran automatycznie wygasza się pozakończeniu testu
