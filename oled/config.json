@@ -1,0 +1,14 @@
+{
+  "dim_timeout": 30,
+  "off_timeout": 120,
+  "brightness_normal": 80,
+  "brightness_dim": 1,
+  "mpd_host": "localhost",
+  "mpd_port": 6600,
+  "encoder": {
+    "enabled": true,
+    "pin_a": 17,
+    "pin_b": 27,
+    "pin_sw": 22
+  }
+}

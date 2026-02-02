@@ -1,34 +1,32 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.05a3"
+SOFT_VERSION="0.06a"
 
-# Kolory
 RED="\e[31m"
 GREEN="\e[32m"
 YELLOW="\e[33m"
 BLUE="\e[34m"
 RESET="\e[0m"
 
-# Katalogi projektu
 STREAMER_DIR="$HOME/streamer"
 LOG_DIR="$STREAMER_DIR/logs"
 CONFIG_DIR="$STREAMER_DIR/config"
 INSTALLER_DIR="$STREAMER_DIR/installer"
 CHANGELOG_DIR="$STREAMER_DIR/changelog"
 MEDIA_DIR="$STREAMER_DIR/media"
+OLED_DIR="$STREAMER_DIR/oled"
 
 LOGFILE="$LOG_DIR/install.log"
-GPIO_FILE="$CONFIG_DIR/gpio.json"
 
-# Wykrycie właściwego config.txt
 if [ -f /boot/firmware/config.txt ]; then
     CONFIG_TXT="/boot/firmware/config.txt"
 else
     CONFIG_TXT="/boot/config.txt"
 fi
 
-# Funkcje
+REPO_BASE="https://gitlab.com/aloisy/streamer/-/raw/master"
+
 log() {
     echo -e "$(date '+%Y-%m-%d %H:%M:%S')  $1" | tee -a "$LOGFILE"
 }
@@ -66,30 +64,22 @@ ensure_line() {
     return 1
 }
 
-# -----------------------------------------------
-# Start
-# -----------------------------------------------
 echo -e "${BLUE}=============================================="
 echo -e " STREAMER AUDIO – Instalator v$SOFT_VERSION"
 echo -e "==============================================${RESET}"
 pause_step
 
-mkdir -p "$LOG_DIR" "$CONFIG_DIR" "$INSTALLER_DIR" "$CHANGELOG_DIR" "$MEDIA_DIR"
+mkdir -p "$LOG_DIR" "$CONFIG_DIR" "$INSTALLER_DIR" "$CHANGELOG_DIR" "$MEDIA_DIR" \
+         "$OLED_DIR/graphics/anim"
 touch "$LOGFILE"
 log "Struktura katalogów gotowa."
 
-# -----------------------------------------------
-# 1. Aktualizacja systemu
-# -----------------------------------------------
 echo -e "${BLUE}Krok 1: Aktualizacja systemu${RESET}"
 (sudo apt update && sudo apt upgrade -y) &
 spinner $!
 log "System zaktualizowany."
 pause_step
 
-# -----------------------------------------------
-# 2. Instalacja pakietów
-# -----------------------------------------------
 echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
 (sudo apt install -y git python3 python3-pip python3-venv \
     mpd mpc alsa-utils i2c-tools jq curl wget unzip sox) &
@@ -97,9 +87,6 @@ spinner $!
 log "Pakiety zainstalowane."
 pause_step
 
-# -----------------------------------------------
-# 3. Instalacja bibliotek Python
-# -----------------------------------------------
 echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
 (pip3 install --break-system-packages \
     python-mpd2 RPi.GPIO pillow adafruit-circuitpython-ssd1306 requests) &
@@ -107,9 +94,6 @@ spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
 
-# -----------------------------------------------
-# 4. Synchronizacja config.txt
-# -----------------------------------------------
 echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
 
 CHANGES=0
@@ -126,18 +110,12 @@ fi
 log "Synchronizacja config.txt zakończona."
 pause_step
 
-# -----------------------------------------------
-# 5. Restart MPD (bez radia)
-# -----------------------------------------------
 echo -e "${BLUE}Krok 5: Restart MPD${RESET}"
 sudo systemctl restart mpd
 mpc stop >/dev/null 2>&1
 log "MPD uruchomiony i zatrzymany."
 pause_step
 
-# -----------------------------------------------
-# 6. Autodetekcja DAC
-# -----------------------------------------------
 echo -e "${BLUE}Krok 6: Autodetekcja DAC${RESET}"
 if aplay -l | grep -qi "sndrpihifiberry"; then
     log "Wykryto DAC: PCM5102A"
@@ -146,9 +124,6 @@ else
 fi
 pause_step
 
-# -----------------------------------------------
-# 7. Autodetekcja OLED
-# -----------------------------------------------
 echo -e "${BLUE}Krok 7: Autodetekcja OLED${RESET}"
 if sudo i2cdetect -y 1 | grep -q "3c"; then
     log "OLED wykryty."
@@ -159,9 +134,6 @@ else
 fi
 pause_step
 
-# -----------------------------------------------
-# 8. Dodanie stacji radiowej
-# -----------------------------------------------
 echo -e "${BLUE}Krok 8: Dodanie stacji radiowej${RESET}"
 
 RADIO_URL="http://stream.rcs.revma.com/ye5kghkgcm0uv"
@@ -185,14 +157,10 @@ fi
 
 pause_step
 
-# -----------------------------------------------
-# 9. Test DAC (test.wav stereo 400 Hz)
-# -----------------------------------------------
 echo -e "${BLUE}Krok 9: Test DAC${RESET}"
 
 TEST_WAV="$MEDIA_DIR/test.wav"
 
-# zawsze nadpisujemy test.wav
 log "Generuję test.wav (400 Hz, stereo, 0.5 s)."
 sox -n -r 48000 -b 16 -c 2 "$TEST_WAV" synth 0.5 sine 400
 
@@ -203,9 +171,6 @@ aplay "$TEST_WAV" -D plughw:0,0
 log "Test DAC zakończony."
 pause_step
 
-# -----------------------------------------------
-# 10. Test OLED (bez wysypywania)
-# -----------------------------------------------
 echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
 if [ "$OLED_PRESENT" -eq 1 ]; then
@@ -222,10 +187,8 @@ except Exception as e:
     print("OLED not detected:", e)
     exit(0)
 
-# Minimalna jasność (realne ~10%)
 display.contrast(1)
 
-# Przygotowanie obrazu
 image = Image.new("1", (128, 64))
 draw = ImageDraw.Draw(image)
 font = ImageFont.load_default()
@@ -237,17 +200,13 @@ h = bbox[3] - bbox[1]
 
 draw.text(((128 - w) // 2, (64 - h) // 2), text, font=font, fill=255)
 
-# Wyświetlenie
 display.image(image)
 display.show()
 
-# Czekamy 2 sekundy
 time.sleep(2)
 
-# Wygaszenie ekranu
 display.fill(0)
 display.show()
-
 EOF
     log "OLED test zakończony (niska jasność + wygaszenie)."
 else
@@ -256,21 +215,55 @@ fi
 
 pause_step
 
-# -----------------------------------------------
-# 11. Pobranie changelog z repo
-# -----------------------------------------------
 echo -e "${BLUE}Krok 11: Pobieranie changelog${RESET}"
 
-CHANGELOG_URL="https://gitlab.com/aloisy/streamer/-/raw/master/change_log"
+CHANGELOG_URL="$REPO_BASE/change_log"
 curl -L -s "$CHANGELOG_URL" -o "$CHANGELOG_DIR/latest.txt"
 
 log "Pobrano changelog."
 pause_step
 
-# -----------------------------------------------
-# 12. Przeniesienie instalatora
-# -----------------------------------------------
-echo -e "${BLUE}Krok 12: Przenoszenie instalatora${RESET}"
+echo -e "${BLUE}Krok 12: Pobieranie OLED daemona, configu i grafik${RESET}"
+
+curl -L -s "$REPO_BASE/oled/oled_daemon.py" -o "$OLED_DIR/oled_daemon.py"
+curl -L -s "$REPO_BASE/oled/config.json" -o "$OLED_DIR/config.json"
+
+curl -L -s "$REPO_BASE/oled/graphics/logo.pbm"   -o "$OLED_DIR/graphics/logo.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/volume.pbm" -o "$OLED_DIR/graphics/volume.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/play.pbm"   -o "$OLED_DIR/graphics/play.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/pause.pbm"  -o "$OLED_DIR/graphics/pause.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/radio.pbm"  -o "$OLED_DIR/graphics/radio.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/khz.pbm"    -o "$OLED_DIR/graphics/khz.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/bits.pbm"   -o "$OLED_DIR/graphics/bits.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/time.pbm"   -o "$OLED_DIR/graphics/time.pbm"
+
+# animacja (jeśli jest)
+curl -L -s "$REPO_BASE/oled/graphics/anim/frame01.pbm" -o "$OLED_DIR/graphics/anim/frame01.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/anim/frame02.pbm" -o "$OLED_DIR/graphics/anim/frame02.pbm"
+curl -L -s "$REPO_BASE/oled/graphics/anim/frame03.pbm" -o "$OLED_DIR/graphics/anim/frame03.pbm"
+
+chmod +x "$OLED_DIR/oled_daemon.py"
+
+log "OLED daemon, config i grafiki pobrane."
+pause_step
+
+echo -e "${BLUE}Krok 13: Instalacja usługi systemd dla OLED${RESET}"
+
+TMP_SERVICE="/tmp/oled.service"
+curl -L -s "$REPO_BASE/systemd/oled.service" -o "$TMP_SERVICE"
+
+CURRENT_USER="$(whoami)"
+sudo sed -i "s/%i/$CURRENT_USER/g" "$TMP_SERVICE"
+
+sudo mv "$TMP_SERVICE" /etc/systemd/system/oled.service
+sudo systemctl daemon-reload
+sudo systemctl enable oled.service
+sudo systemctl restart oled.service
+
+log "Usługa OLED zainstalowana i uruchomiona."
+pause_step
+
+echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
 SCRIPT_NAME="$(basename "$0")"
 TARGET_PATH="$INSTALLER_DIR/$SCRIPT_NAME"
@@ -283,9 +276,6 @@ fi
 
 pause_step
 
-# -----------------------------------------------
-# 13. Zakończenie
-# -----------------------------------------------
 mpc stop >/dev/null 2>&1
 
 echo -e "${GREEN}=============================================="
