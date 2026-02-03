@@ -1,6 +1,11 @@
 # Streamer Audio – CHANGE LOG
 
 ## 0.06a1 - 0.06a4 – dodanie daemona oled +Poprawki
+- Poprawa grafik oled
+- Dodano roadmap
+- Dodano nowe usatwienia w config.json (nie wszytkie użyteczne)
+
+## 0.06a1 - 0.06a4 – dodanie daemona oled +Poprawki
 - Dodanie grafik oled
 - poprawki instalatora
 - naprawa błędnych nazw plików/folderów
