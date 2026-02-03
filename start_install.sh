@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.06a4"
+SOFT_VERSION="0.07a1"
 
 RED="\e[31m"
 GREEN="\e[32m"

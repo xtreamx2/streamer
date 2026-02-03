@@ -1,14 +1,33 @@
 {
-  "dim_timeout": 30,
-  "off_timeout": 120,
-  "brightness_normal": 80,
-  "brightness_dim": 1,
-  "mpd_host": "localhost",
-  "mpd_port": 6600,
+  "oled": {
+    "enabled": true,
+    "i2c_bus": 1,
+    "address": "0x3C",
+    "width": 128,
+    "height": 64,
+    "rotation": 0
+  },
+
   "encoder": {
-    "enabled": false,
+    "enabled": true,
     "pin_a": 17,
     "pin_b": 27,
-    "pin_sw": 22
+    "pin_sw": 22,
+    "direction": "normal",
+    "debounce_ms": 2
+  },
+
+  "mpd": {
+    "host": "localhost",
+    "port": 6600,
+    "timeout": 2
+  },
+
+  "features": {
+    "ir": false,
+    "temperature": false,
+    "rgb": false,
+    "relays": false,
+    "mcp23017": false
   }
 }
