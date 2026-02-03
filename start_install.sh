@@ -218,7 +218,7 @@ pause_step
 echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
 
 TMP_DIR=$(mktemp -d)
-git clone "$REPO_GIT" "$TMP_DIR" >/dev/null 2>&1
+git clone --depth=1 "$REPO_GIT" "$TMP_DIR" >/dev/null 2>&1
 
 if [ $? -ne 0 ]; then
     log "Błąd: nie udało się pobrać repozytorium!"
@@ -228,7 +228,11 @@ fi
 rsync -av \
     --exclude=config \
     --exclude=oled/config.json \
-    "$TMP_DIR/streamer/" "$STREAMER_DIR/"
+    --exclude=installer \
+    --exclude=logs \
+    --exclude=.git \
+    --exclude=.gitignore \
+    "$TMP_DIR/" "$STREAMER_DIR/"
 
 log "Repozytorium zsynchronizowane."
 pause_step
