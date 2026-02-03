@@ -1,0 +1,33 @@
+{
+  "Version": "0.7a3",
+
+  "oled": {
+    "type": "ssd1306",
+    "width": 128,
+    "height": 64,
+    "address": "0x3C",
+    "rotation": "0"
+  },
+
+  "i2s": {
+    "enabled": true,
+    "dac_overlay": "hifiberry-dac",
+    "bck": 18,
+    "lrck": 19,
+    "din": 21,
+    "mclk": 5,
+    "mute": 6
+  },
+
+  "encoder": {
+    "enabled": true,
+    "pin_a": 23,
+    "pin_b": 24,
+    "pin_sw": 13
+  },
+
+  "buttons": {
+    "enabled": false,
+    "pins": []
+  }
+}

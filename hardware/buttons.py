@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
+import RPi.GPIO as GPIO
 import os
 import json
-import time
-import RPi.GPIO as GPIO
 
 BASE_DIR = os.path.join(os.path.expanduser("~"), "streamer")
 GPIO_MAP_PATH = os.path.join(BASE_DIR, "config", "gpio.json")
@@ -10,10 +9,9 @@ GPIO_MAP_PATH = os.path.join(BASE_DIR, "config", "gpio.json")
 
 class Buttons:
     """
-    Uniwersalny moduł wejść:
+    Moduł obsługi wejść:
     - enkoder (A/B/SW)
-    - przyciski GPIO
-    - przyszłościowo: IR, MCP23017, RGB, relays
+    - przyciski GPIO (w przyszłości)
     """
 
     def __init__(self, on_rotate=None, on_click=None):
@@ -25,10 +23,11 @@ class Buttons:
             gpio = json.load(f)
 
         enc = gpio.get("encoder", {})
+        self.enabled = enc.get("enabled", False)
+
         self.pin_a = enc.get("pin_a")
         self.pin_b = enc.get("pin_b")
         self.pin_sw = enc.get("pin_sw")
-        self.enabled = enc.get("enabled", False)
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
@@ -41,31 +40,62 @@ class Buttons:
     # -----------------------------------------
 
     def _init_encoder(self):
+        """Inicjalizacja enkodera z bezpiecznym fallbackiem."""
+
+        # Jeśli któryś pin nie jest ustawiony → wyłącz enkoder
+        if None in (self.pin_a, self.pin_b, self.pin_sw):
+            print("[buttons] Brak pinów enkodera w gpio.json — wyłączam.")
+            self.enabled = False
+            return
+
         GPIO.setup(self.pin_a, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.pin_b, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.pin_sw, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
         self.last_state = GPIO.input(self.pin_a)
 
-        GPIO.add_event_detect(self.pin_a, GPIO.BOTH,
-                              callback=self._rotary_callback,
-                              bouncetime=2)
+        # --- bezpieczne dodawanie przerwań dla A ---
+        try:
+            GPIO.add_event_detect(
+                self.pin_a,
+                GPIO.BOTH,
+                callback=self._rotary_callback,
+                bouncetime=2
+            )
+        except RuntimeError as e:
+            print("[buttons] Nie można dodać event_detect dla pin_a:", e)
+            print("[buttons] Wyłączam obsługę enkodera.")
+            self.enabled = False
+            return
 
-        GPIO.add_event_detect(self.pin_sw, GPIO.FALLING,
-                              callback=self._button_callback,
-                              bouncetime=200)
+        # --- bezpieczne dodawanie przerwań dla SW ---
+        try:
+            GPIO.add_event_detect(
+                self.pin_sw,
+                GPIO.FALLING,
+                callback=self._button_callback,
+                bouncetime=200
+            )
+        except RuntimeError as e:
+            print("[buttons] Nie można dodać event_detect dla pin_sw:", e)
+            print("[buttons] Wyłączam obsługę przycisku.")
 
     def _rotary_callback(self, channel):
+        """Obsługa obrotu enkodera."""
+        if not self.enabled:
+            return
+
         a = GPIO.input(self.pin_a)
         b = GPIO.input(self.pin_b)
 
         if a != self.last_state:
+            direction = +1 if b != a else -1
             if self.on_rotate:
-                direction = +1 if b != a else -1
                 self.on_rotate(direction)
             self.last_state = a
 
     def _button_callback(self, channel):
+        """Obsługa kliknięcia."""
         if self.on_click:
             self.on_click()
 

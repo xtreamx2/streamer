@@ -1,5 +1,9 @@
 # Streamer Audio – CHANGE LOG
 
+## 0.07a – naprawa skryptów i ekranu
+- ekran wciąż miał problemy wię trzeba było podzielić ekran i enkoder
+- ciągłe poprawki enkodera
+
 ## 0.06a1 - 0.06a4 – dodanie daemona oled +Poprawki
 - Poprawa grafik oled
 - Dodano roadmap
