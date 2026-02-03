@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.07a1"
+SOFT_VERSION="0.07a2"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -25,7 +25,7 @@ else
     CONFIG_TXT="/boot/config.txt"
 fi
 
-REPO_BASE="https://gitlab.com/aloisy/streamer/-/raw/master"
+REPO_GIT="https://gitlab.com/aloisy/streamer.git"
 
 log() {
     echo -e "$(date '+%Y-%m-%d %H:%M:%S')  $1" | tee -a "$LOGFILE"
@@ -215,52 +215,60 @@ fi
 
 pause_step
 
-echo -e "${BLUE}Krok 11: Pobieranie changelog${RESET}"
+echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
 
-CHANGELOG_URL="$REPO_BASE/change_log"
-curl -L -s "$CHANGELOG_URL" -o "$CHANGELOG_DIR/latest.txt"
+TMP_DIR=$(mktemp -d)
+git clone "$REPO_GIT" "$TMP_DIR" >/dev/null 2>&1
 
-log "Pobrano changelog."
+if [ $? -ne 0 ]; then
+    log "Błąd: nie udało się pobrać repozytorium!"
+    exit 1
+fi
+
+rsync -av \
+    --exclude=config \
+    --exclude=oled/config.json \
+    "$TMP_DIR/streamer/" "$STREAMER_DIR/"
+
+log "Repozytorium zsynchronizowane."
 pause_step
 
-echo -e "${BLUE}Krok 12: Pobieranie OLED daemona, configu i grafik${RESET}"
+echo -e "${BLUE}Krok 12: Aktualizacja changelog${RESET}"
 
-curl -L -s "$REPO_BASE/oled/oled_daemon.py" -o "$OLED_DIR/oled_daemon.py"
-curl -L -s "$REPO_BASE/oled/config.json" -o "$OLED_DIR/config.json"
+if [ -f "$STREAMER_DIR/changelog/change_log" ]; then
+    cp "$STREAMER_DIR/changelog/change_log" "$CHANGELOG_DIR/latest.txt"
+    log "Changelog zaktualizowany z repozytorium."
+else
+    log "Brak pliku change_log w repozytorium."
+fi
 
-curl -L -s "$REPO_BASE/oled/graphics/logo.pbm"   -o "$OLED_DIR/graphics/logo.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/volume.pbm" -o "$OLED_DIR/graphics/volume.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/play.pbm"   -o "$OLED_DIR/graphics/play.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/pause.pbm"  -o "$OLED_DIR/graphics/pause.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/radio.pbm"  -o "$OLED_DIR/graphics/radio.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/khz.pbm"    -o "$OLED_DIR/graphics/khz.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/bits.pbm"   -o "$OLED_DIR/graphics/bits.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/time.pbm"   -o "$OLED_DIR/graphics/time.pbm"
-
-# animacja (jeśli jest)
-curl -L -s "$REPO_BASE/oled/graphics/anim/frame01.pbm" -o "$OLED_DIR/graphics/anim/frame01.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/anim/frame02.pbm" -o "$OLED_DIR/graphics/anim/frame02.pbm"
-curl -L -s "$REPO_BASE/oled/graphics/anim/frame03.pbm" -o "$OLED_DIR/graphics/anim/frame03.pbm"
-
-chmod +x "$OLED_DIR/oled_daemon.py"
-
-log "OLED daemon, config i grafiki pobrane."
 pause_step
 
-echo -e "${BLUE}Krok 13: Instalacja usługi systemd dla OLED${RESET}"
-
-TMP_SERVICE="/tmp/oled.service"
-curl -L -s "$REPO_BASE/systemd/oled.service" -o "$TMP_SERVICE"
+echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
 
 CURRENT_USER="$(whoami)"
-sudo sed -i "s/%i/$CURRENT_USER/g" "$TMP_SERVICE"
 
-sudo mv "$TMP_SERVICE" /etc/systemd/system/oled.service
+if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
+    sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
+    sudo sed -i "s/%i/$CURRENT_USER/g" /etc/systemd/system/oled.service
+    sudo systemctl enable oled.service
+    sudo systemctl restart oled.service
+    log "Usługa OLED zainstalowana i uruchomiona."
+else
+    log "Brak pliku systemd/oled.service w repozytorium."
+fi
+
+if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
+    sudo cp "$STREAMER_DIR/systemd/input.service" /etc/systemd/system/input.service
+    sudo sed -i "s/%i/$CURRENT_USER/g" /etc/systemd/system/input.service
+    sudo systemctl enable input.service
+    sudo systemctl restart input.service
+    log "Usługa INPUT zainstalowana i uruchomiona."
+else
+    log "Brak pliku systemd/input.service w repozytorium (pomijam)."
+fi
+
 sudo systemctl daemon-reload
-sudo systemctl enable oled.service
-sudo systemctl restart oled.service
-
-log "Usługa OLED zainstalowana i uruchomiona."
 pause_step
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
