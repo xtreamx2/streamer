@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.07a3"
+SOFT_VERSION="0.07a4"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -226,13 +226,11 @@ if [ $? -ne 0 ]; then
 fi
 
 rsync -av \
-    --exclude=config \
-    --exclude=oled/config.json \
-    --exclude=installer \
-    --exclude=logs \
-    --exclude=.git \
-    --exclude=.gitignore \
-    "$TMP_DIR/" "$STREAMER_DIR/"
+# Nadpisujemy tylko domyślne configi, jeśli nie istnieją
+if [ ! -f "$STREAMER_DIR/config/gpio.json" ]; then
+    cp "$TMP_DIR/config/gpio.json" "$STREAMER_DIR/config/gpio.json"
+    log "Skopiowano domyślny gpio.json"
+fi
 
 log "Repozytorium zsynchronizowane."
 pause_step

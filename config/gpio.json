@@ -24,7 +24,7 @@
     "pin_a": 23,
     "pin_b": 24,
     "pin_sw": 13
-  },
+  }
 
   "buttons": {
     "enabled": false,
