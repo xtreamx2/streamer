@@ -14,6 +14,7 @@ LOG_DIR="$STREAMER_DIR/logs"
 CONFIG_DIR="$STREAMER_DIR/config"
 INSTALLER_DIR="$STREAMER_DIR/installer"
 CHANGELOG_DIR="$STREAMER_DIR/changelog"
+CHANGELOG_SOURCE="$STREAMER_DIR/change_log"
 MEDIA_DIR="$STREAMER_DIR/media"
 OLED_DIR="$STREAMER_DIR/oled"
 
@@ -25,7 +26,7 @@ else
     CONFIG_TXT="/boot/config.txt"
 fi
 
-REPO_GIT="https://gitlab.com/aloisy/streamer.git"
+REPO_GIT="https://github.com/aloisy/streamer.git"
 
 log() {
     echo -e "$(date '+%Y-%m-%d %H:%M:%S')  $1" | tee -a "$LOGFILE"
@@ -237,8 +238,8 @@ pause_step
 
 echo -e "${BLUE}Krok 12: Aktualizacja changelog${RESET}"
 
-if [ -f "$STREAMER_DIR/changelog/change_log" ]; then
-    cp "$STREAMER_DIR/changelog/change_log" "$CHANGELOG_DIR/latest.txt"
+if [ -f "$CHANGELOG_SOURCE" ]; then
+    cp "$CHANGELOG_SOURCE" "$CHANGELOG_DIR/latest.txt"
     log "Changelog zaktualizowany z repozytorium."
 else
     log "Brak pliku change_log w repozytorium."
