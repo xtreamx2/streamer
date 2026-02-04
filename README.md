@@ -62,9 +62,9 @@ Projekt jest rozwijany z naciskiem na:
 ### Instalacja przez `curl`
 
 ```bash
-curl -s https://gitlab.com/aloisy/streamer/-/raw/master/start_install.sh -o install.sh
-chmod +x install.sh
-./install.sh
+curl -sL https://raw.githubusercontent.com/aloisy/streamer/master/start_install.sh | bash
+```
+```
 
 
 streamer/
@@ -78,7 +78,7 @@ streamer/
  │    └── start_install.sh
  ├── change_log
  └── README.md
-
+```
 
 Projekt składa się z trzech warstw licencyjnych:
 
