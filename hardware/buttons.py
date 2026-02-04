@@ -2,6 +2,7 @@
 import RPi.GPIO as GPIO
 import os
 import json
+import time
 
 BASE_DIR = os.path.join(os.path.expanduser("~"), "streamer")
 GPIO_MAP_PATH = os.path.join(BASE_DIR, "config", "gpio.json")
@@ -17,6 +18,8 @@ class Buttons:
     def __init__(self, on_rotate=None, on_click=None):
         self.on_rotate = on_rotate
         self.on_click = on_click
+        self.debounce_s = 0.005
+        self._last_event_time = 0.0
 
         # Wczytaj mapę GPIO
         with open(GPIO_MAP_PATH, "r") as f:
@@ -54,7 +57,7 @@ class Buttons:
 
         self.last_state = GPIO.input(self.pin_a)
 
-        # --- bezpieczne dodawanie przerwań dla A ---
+        # --- bezpieczne dodawanie przerwań dla A/B ---
         try:
             GPIO.add_event_detect(
                 self.pin_a,
@@ -62,8 +65,14 @@ class Buttons:
                 callback=self._rotary_callback,
                 bouncetime=2
             )
+            GPIO.add_event_detect(
+                self.pin_b,
+                GPIO.BOTH,
+                callback=self._rotary_callback,
+                bouncetime=2
+            )
         except RuntimeError as e:
-            print("[buttons] Nie można dodać event_detect dla pin_a:", e)
+            print("[buttons] Nie można dodać event_detect dla pinów enkodera:", e)
             print("[buttons] Wyłączam obsługę enkodera.")
             self.enabled = False
             return
@@ -84,6 +93,11 @@ class Buttons:
         """Obsługa obrotu enkodera."""
         if not self.enabled:
             return
+
+        now = time.monotonic()
+        if now - self._last_event_time < self.debounce_s:
+            return
+        self._last_event_time = now
 
         a = GPIO.input(self.pin_a)
         b = GPIO.input(self.pin_b)
