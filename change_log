@@ -1,0 +1,65 @@
+# Streamer Audio – CHANGE LOG
+
+## 0.07a – naprawa skryptów i ekranu
+- ekran wciąż miał problemy wię trzeba było podzielić ekran i enkoder
+- ciągłe poprawki enkodera
+
+## 0.06a1 - 0.06a4 – dodanie daemona oled +Poprawki
+- Poprawa grafik oled
+- Dodano roadmap
+- Dodano nowe usatwienia w config.json (nie wszytkie użyteczne)
+
+## 0.06a1 - 0.06a4 – dodanie daemona oled +Poprawki
+- Dodanie grafik oled
+- poprawki instalatora
+- naprawa błędnych nazw plików/folderów
+- brak enkodera nie psuje projektu
+
+## 0.05a3 – Poprawki
+- Naprawiono wyświetlanie OLED
+- Ekran automatycznie wygasza się pozakończeniu testu
+- jasność 1% by nie wypalać pikseli
+
+## 0.05a2 – Poprawki
+- Naprawiono błąd OLED (przy nie wykryciu ekranu phyton sie wysypywał)
+- Poprawiono dźwięk kontrolny - teraz jest 400hz stereo
+
+## 0.05a – Pobieranie changelog z repo + OLED test
+- Instalator pobiera changelog z GitLab do katalogu `$HOME/streamer/changelog`.
+- Usunięto lokalne generowanie changelog.
+- Dodano test OLED: napis „STREAMER” na środku, jasność 10%.
+- Poprawiono test DAC: plik test.wav generowany jako stereo (2 kanały).
+- Dodano `clear` na początku instalatora.
+- Naprawiono automatyczne uruchamianie radia po restarcie MPD.
+- Uporządkowano logikę kroków instalacji.
+
+## 0.04e – Poprawki instalatora, config.txt i testu DAC
+- Wykrywanie `/boot/firmware/config.txt` vs `/boot/config.txt`.
+- Włączenie I2C i I2S bez raspi-config.
+- Wyłączenie wbudowanego audio (dtparam=audio=on).
+- Dodanie generowania test.wav (800 Hz, 0.5 s) i testu DAC.
+- Logika radia: 30% głośności, wyłączone po instalacji, brak auto-play przy ponownej instalacji.
+
+## 0.04a1–0.04a4 – Wersje robocze instalatora
+- Iteracyjne poprawki logiki instalacji i detekcji.
+- Uspójnienie struktury katalogów i logowania.
+
+## 0.03a – Wykrywanie SSD1306/SSD1309 + poprawki instalatora
+- Dodano wykrywanie OLED SSD1306/SSD1309.
+- Spinner we wszystkich instalacjach.
+- gpio.json jako źródło parametrów.
+- Synchronizacja config.txt tylko przy zmianach.
+
+## 0.02a – Instalator startowy
+- Instalacja MPD, MPC, Python, bibliotek.
+- Autodetekcja Raspberry Pi (błędna).
+- Autodetekcja DAC i OLED.
+- Tworzenie struktury katalogów.
+- Dodanie polskiej stacji radiowej.
+- Test odtwarzania.
+
+## 0.01a – Koncept streamera
+- Założenia: OLED, DAC I2S, enkodery, przyciski.
+- Filozofia: modularność, dokumentacja, automatyzacja.
+- Plan: daemon MPD + OLED.
+- Wersja koncepcyjna, nigdy nie wydana.
