@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Streamer Audio – Raspberry Pi I2S DAC + OLED
 
 Streamer Audio to otwarto‑źródłowy projekt odtwarzacza audio opartego na Raspberry Pi, z obsługą:
