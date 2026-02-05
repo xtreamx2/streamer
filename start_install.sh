@@ -352,6 +352,18 @@ fi
 
 pause_step
 
+echo -e "${BLUE}Krok 15: Przywracanie usług${RESET}"
+if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
+    sudo systemctl restart oled.service
+    log "Usługa OLED uruchomiona po instalacji."
+fi
+if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
+    sudo systemctl restart input.service
+    log "Usługa INPUT uruchomiona po instalacji."
+fi
+
+pause_step
+
 mpc stop >/dev/null 2>&1
 
 echo -e "${GREEN}=============================================="
