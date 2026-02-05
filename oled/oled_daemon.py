@@ -293,11 +293,10 @@ def main():
     display = init_display(oled_cfg)
     show_logo(display)
 
-client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
-last_activity = time.time()
-last_power_state = None
+    client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
+    last_activity = time.time()
+    last_power_state = None
 
-try:
     while True:
         if client is None:
             client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
@@ -333,4 +332,7 @@ try:
                 last_power_state = "active"
 
         time.sleep(0.5)
-    
+
+
+if __name__ == "__main__":
+    main()
