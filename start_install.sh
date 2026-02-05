@@ -26,11 +26,12 @@ else
     CONFIG_TXT="/boot/config.txt"
 fi
 
-REPO_GIT="https://github.com/xtreamx2/streamer.git"
-
-log() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S')  $1" | tee -a "$LOGFILE"
-}
+REPO_GIT_DEFAULT="https://github.com/xtreamx2/streamer.git"
+REPO_GIT="${REPO_GIT:-$REPO_GIT_DEFAULT}"
+REPO_BRANCH="${REPO_BRANCH:-main}"
+if [ -z "$REPO_BRANCH" ]; then
+    REPO_BRANCH="main"
+fi
 
 pause_step() {
     echo ""
@@ -246,8 +247,15 @@ echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
 
 TMP_DIR=$(mktemp -d)
 log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
-if ! GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
+CLONE_OK=0
+if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
     "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
+    if [ -n "$(ls -A "$TMP_DIR")" ]; then
+        CLONE_OK=1
+    fi
+fi
+
+if [ "$CLONE_OK" -ne 1 ]; then
     log "Git clone nieudany, próbuję pobrać archiwum z GitHuba."
     if [[ "$REPO_GIT" =~ github.com/([^/]+)/([^/.]+)(\.git)?$ ]]; then
         OWNER="${BASH_REMATCH[1]}"
