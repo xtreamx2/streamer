@@ -317,20 +317,20 @@ def main():
         bright_active = brightness_to_contrast(oled_rt.get("brightness_active", 50))
         bright_dim = brightness_to_contrast(oled_rt.get("brightness_dim", 10))
 
-        if idle > oled_rt["off_timeout"]:
-            if last_power_state != "off":
-                display.fill(0)
-                display.show()
-                last_power_state = "off"
-        elif idle > oled_rt["dim_timeout"]:
-            if last_power_state != "dim":
-                display.contrast(bright_dim)
-                last_power_state = "dim"
-        else:
-            if last_power_state != "active":
-                display.contrast(bright_active)
-                last_power_state = "active"
-
+if idle > oled_rt["off_timeout"]:
+    if last_power_state != "off":
+        display.contrast(0)
+        display.fill(0)
+        display.show()
+        last_power_state = "off"
+elif idle > oled_rt["dim_timeout"]:
+    if last_power_state != "dim":
+        display.contrast(bright_dim)
+        last_power_state = "dim"
+else:
+    if last_power_state != "active":
+        display.contrast(bright_active)
+        last_power_state = "active"
         time.sleep(0.5)
 
 
