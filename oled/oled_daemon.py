@@ -12,6 +12,7 @@ CONFIG_PATH = os.path.join(BASE_DIR, "oled", "config.json")
 GPIO_MAP_PATH = os.path.join(BASE_DIR, "config", "gpio.json")
 GRAPHICS_DIR = os.path.join(BASE_DIR, "oled", "graphics")
 INPUT_STATE_PATH = os.path.join(BASE_DIR, "oled", "input_state.json")
+START_TIME = time.time()
 
 # -------------------------------
 # CONFIG LOADERS
@@ -68,7 +69,7 @@ def load_gpio_map():
 
 def load_input_state():
     defaults = {
-        "last_activity": time.time(),
+        "last_activity": START_TIME,
         "mode": "volume",
         "menu_index": 0,
         "setting_index": 0
@@ -79,7 +80,7 @@ def load_input_state():
             return deep_merge(defaults, data)
     except Exception:
         return defaults
-
+        
 # -------------------------------
 # OLED
 # -------------------------------
