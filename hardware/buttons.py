@@ -15,11 +15,14 @@ class Buttons:
     - przyciski GPIO (w przyszłości)
     """
 
-    def __init__(self, on_rotate=None, on_click=None):
+    def __init__(self, on_rotate=None, on_click=None, on_long_press=None):
         self.on_rotate = on_rotate
         self.on_click = on_click
+        self.on_long_press = on_long_press
         self.debounce_s = 0.005
         self._last_event_time = 0.0
+        self.long_press_s = 1.2
+        self._press_time = None
 
         # Wczytaj mapę GPIO
         with open(GPIO_MAP_PATH, "r") as f:
@@ -81,9 +84,9 @@ class Buttons:
         try:
             GPIO.add_event_detect(
                 self.pin_sw,
-                GPIO.FALLING,
+                GPIO.BOTH,
                 callback=self._button_callback,
-                bouncetime=200
+                bouncetime=50
             )
         except RuntimeError as e:
             print("[buttons] Nie można dodać event_detect dla pin_sw:", e)
@@ -109,9 +112,25 @@ class Buttons:
             self.last_state = a
 
     def _button_callback(self, channel):
-        """Obsługa kliknięcia."""
-        if self.on_click:
-            self.on_click()
+        """Obsługa kliknięcia/long press."""
+        if not self.enabled:
+            return
+        state = GPIO.input(self.pin_sw)
+        if state == 0:
+            self._press_time = time.monotonic()
+            return
+
+        if self._press_time is None:
+            return
+
+        duration = time.monotonic() - self._press_time
+        self._press_time = None
+        if duration >= self.long_press_s:
+            if self.on_long_press:
+                self.on_long_press()
+        else:
+            if self.on_click:
+                self.on_click()
 
     # -----------------------------------------
     # CLEANUP
