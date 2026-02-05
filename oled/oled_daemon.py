@@ -153,10 +153,6 @@ def draw_menu_bar(draw, font, width):
 
     return bar_height
 
-<<<<<<< HEAD
-=======
-
->>>>>>> codex/fix-python-installation-issues-for-v0.07a6
 def draw_status(display, info):
     image = Image.new("1", (128, 64))
     draw = ImageDraw.Draw(image)
@@ -165,18 +161,12 @@ def draw_status(display, info):
     menu_height = draw_menu_bar(draw, font, 128)
 
     line1 = info["station"][:20]
-<<<<<<< HEAD
 
-=======
->>>>>>> codex/fix-python-installation-issues-for-v0.07a6
     line2 = (
         f"Vol:{info['volume']}%  "
         f"{'▶' if info['state']=='play' else '❚❚' if info['state']=='pause' else '■'}"
     )
-<<<<<<< HEAD
-=======
 
->>>>>>> codex/fix-python-installation-issues-for-v0.07a6
     draw.text((0, menu_height + 2), line1, font=font, fill=255)
     draw.text((0, menu_height + 18), line2, font=font, fill=255)
 
