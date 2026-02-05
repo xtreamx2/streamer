@@ -26,7 +26,7 @@ else
     CONFIG_TXT="/boot/config.txt"
 fi
 
-REPO_GIT="https://github.com/aloisy/streamer.git"
+REPO_GIT="https://github.com/xtreamx2/streamer.git"
 
 log() {
     echo -e "$(date '+%Y-%m-%d %H:%M:%S')  $1" | tee -a "$LOGFILE"
