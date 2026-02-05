@@ -3,7 +3,7 @@
 ## 0.07a6 – menu OLED + poprawki instalatora
 - dodano menu w ekranie OLED
 - poprawiono instalację Pythona (Pillow z repozytorium)
-- naprawiono klonowanie repo bez pytania o login
+- naprawiono klonowanie repo bez pytania o login (w trakcie testów)
 
 ## 0.07a5 – przeniesienie na GitHub i poprawki
 - przeniesienie na GitHub
