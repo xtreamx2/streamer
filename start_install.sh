@@ -1,4 +1,9 @@
 #!/bin/bash
+if [ -z "${BASH_VERSION:-}" ]; then
+    echo "Ten instalator wymaga bash."
+    exit 1
+fi
+set -o pipefail
 clear
 
 SOFT_VERSION="0.07a6"
@@ -33,8 +38,16 @@ if [ -z "$REPO_BRANCH" ]; then
     REPO_BRANCH="main"
 fi
 
+log() {
+    echo -e "$(date '+%Y-%m-%d %H:%M:%S')  $1" | tee -a "$LOGFILE"
+}
+export -f log
+
 pause_step() {
     echo ""
+    if [ ! -t 0 ]; then
+        return 0
+    fi
     read -p "ENTER = kontynuuj, q = przerwij: " choice
     if [ "$choice" = "q" ]; then
         log "Instalacja przerwana przez użytkownika."
