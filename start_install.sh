@@ -272,6 +272,16 @@ import board, busio
 from adafruit_ssd1306 import SSD1306_I2C
 from PIL import Image, ImageDraw, ImageFont
 
+echo -e "${BLUE}Krok 10: Test OLED${RESET}"
+
+if [ "$OLED_PRESENT" -eq 1 ]; then
+OLED_TEST_SCRIPT="/tmp/streamer_oled_test.py"
+cat <<'PY' > "$OLED_TEST_SCRIPT"
+import time
+import board, busio
+from adafruit_ssd1306 import SSD1306_I2C
+from PIL import Image, ImageDraw, ImageFont
+
 try:
     i2c = busio.I2C(board.SCL, board.SDA)
     display = SSD1306_I2C(128, 64, i2c, addr=0x3C)
@@ -299,22 +309,12 @@ time.sleep(2)
 
 display.fill(0)
 display.show()
-EOF
+PY
+python3 "$OLED_TEST_SCRIPT"
     log "OLED test zakończony (niska jasność + wygaszenie)."
 else
     log "OLED pominięty – brak urządzenia."
 fi
-    log "Brak pliku change_log w repozytorium."
-fi
-
-pause_step
-
-echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
-
-CURRENT_USER="$(whoami)"
-
-if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
-    sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
     sudo sed -i "s/%i/$CURRENT_USER/g" /etc/systemd/system/oled.service
     sudo systemctl enable oled.service
     sudo systemctl restart oled.service
