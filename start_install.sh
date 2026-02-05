@@ -89,6 +89,44 @@ mkdir -p "$LOG_DIR" "$CONFIG_DIR" "$INSTALLER_DIR" "$CHANGELOG_DIR" "$MEDIA_DIR"
 touch "$LOGFILE"
 log "Struktura katalogów gotowa."
 
+echo -e "${BLUE}Krok 0: Zatrzymanie usług na czas instalacji${RESET}"
+if systemctl is-active --quiet oled.service; then
+    sudo systemctl stop oled.service
+    log "Usługa OLED zatrzymana na czas instalacji."
+fi
+if systemctl is-active --quiet input.service; then
+    sudo systemctl stop input.service
+    log "Usługa INPUT zatrzymana na czas instalacji."
+fi
+
+echo -e "${BLUE}Krok 0a: Ekran instalacji${RESET}"
+python3 << 'EOF'
+import time
+import board, busio
+from adafruit_ssd1306 import SSD1306_I2C
+from PIL import Image, ImageDraw, ImageFont
+
+try:
+    i2c = busio.I2C(board.SCL, board.SDA)
+    display = SSD1306_I2C(128, 64, i2c, addr=0x3C)
+except Exception:
+    raise SystemExit(0)
+
+display.contrast(200)
+font = ImageFont.load_default()
+
+spinner = ["|", "/", "-", "\\"]
+for _ in range(10):
+    for frame in spinner:
+        image = Image.new("1", (128, 64))
+        draw = ImageDraw.Draw(image)
+        draw.text((0, 0), "Updating...", font=font, fill=255)
+        draw.text((0, 16), f"[{frame}]", font=font, fill=255)
+        display.image(image)
+        display.show()
+        time.sleep(0.2)
+EOF
+
 echo -e "${BLUE}Krok 1: Aktualizacja systemu${RESET}"
 (sudo apt update && sudo apt upgrade -y) &
 spinner $!
@@ -108,44 +146,6 @@ echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
 spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
-
-echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
-
-CHANGES=0
-ensure_line "dtoverlay=hifiberry-dac" "$CONFIG_TXT" && CHANGES=1
-if grep -q "^#dtparam=i2c_arm=on" "$CONFIG_TXT"; then
-    sudo sed -i 's/^#dtparam=i2c_arm=on/dtparam=i2c_arm=on/' "$CONFIG_TXT"
-    log "Odkomentowano dtparam=i2c_arm=on."
-    CHANGES=1
-else
-    ensure_line "dtparam=i2c_arm=on" "$CONFIG_TXT" && CHANGES=1
-fi
-
-if grep -q "^#dtparam=i2s=on" "$CONFIG_TXT"; then
-    sudo sed -i 's/^#dtparam=i2s=on/dtparam=i2s=on/' "$CONFIG_TXT"
-    log "Odkomentowano dtparam=i2s=on."
-    CHANGES=1
-else
-    ensure_line "dtparam=i2s=on" "$CONFIG_TXT" && CHANGES=1
-fi
-
-if grep -q "^dtparam=audio=on" "$CONFIG_TXT"; then
-    sudo sed -i 's/^dtparam=audio=on/#dtparam=audio=on/' "$CONFIG_TXT"
-    log "Wyłączono wbudowane audio."
-    CHANGES=1
-fi
-
-log "Synchronizacja config.txt zakończona."
-
-if ! ls /dev/i2c-1 >/dev/null 2>&1; then
-    sudo modprobe i2c-dev
-    sudo modprobe i2c-bcm2835
-    if ls /dev/i2c-1 >/dev/null 2>&1; then
-        log "I2C aktywne (załadowano moduły kernel)."
-    else
-        log "Uwaga: /dev/i2c-1 nadal niedostępne — może być wymagany restart."
-    fi
-else
     log "I2C już aktywne (/dev/i2c-1 dostępne)."
 fi
 
