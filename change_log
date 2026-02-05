@@ -1,12 +1,16 @@
 # Streamer Audio – CHANGE LOG
 
-## 0.07a6 – menu OLED + poprawki instalatora
+## 0.07a7 – menu OLED + poprawki instalatora
 - dodano menu w ekranie OLED
-- poprawiono instalację Pythona (Pliów z repozytorium)
+- dodano menu OLED z trybem ustawień jasności/wygaszania i obsługą long-press
+
+## 0.07a6 – menu OLED + poprawki instalatora
+- poprawiono instalację Pythona (Plików z repozytorium)
 - naprawiono klonowanie repo bez pytania o login
 - zaktualizowano domyślny adres repozytorium i logowanie błędów pobierania
 - dodano fallback pobierania archiwum, gdy git clone zawiedzie
 - wymuszono domyślną gałąź main i weryfikację pobrania repo
+- poprawiono działanie logowania i przenoszenia instalatora przy uruchomieniu z pipe
 
 ## 0.07a5 – przeniesienie na GitHub i poprawki
 - przeniesienie na GitHub
