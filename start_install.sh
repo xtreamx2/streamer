@@ -133,15 +133,15 @@ while not os.path.exists(flag):
         display.show()
         time.sleep(0.2)
 PY
-python3 "$SPINNER_SCRIPT" &
+python3 "$SPINNER_SCRIPT" >/dev/null 2>&1 &
 SPINNER_PID=$!
-spinner $!
-log "Pakiety zainstalowane."
-pause_step
+log "Ekran instalacji uruchomiony (spinner OLED w tle)."
 
-echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
-(pip3 install --break-system-packages --prefer-binary \
-    python-mpd2 RPi.GPIO adafruit-circuitpython-ssd1306 requests) &
+echo -e "${BLUE}Krok 1: Aktualizacja systemu${RESET}"
+(sudo apt update && sudo apt upgrade -y) &
+spinner $!
+log "System zaktualizowany."
+pause_step
 spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
