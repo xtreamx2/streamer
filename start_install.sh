@@ -100,11 +100,15 @@ if systemctl is-active --quiet input.service; then
 fi
 
 echo -e "${BLUE}Krok 0a: Ekran instalacji${RESET}"
-python3 << 'EOF'
+SPINNER_FLAG="/tmp/streamer_oled_spinner.stop"
+SPINNER_SCRIPT="/tmp/streamer_oled_spinner.py"
+rm -f "$SPINNER_FLAG"
+cat <<'PY' > "$SPINNER_SCRIPT"
 import time
 import board, busio
 from adafruit_ssd1306 import SSD1306_I2C
 from PIL import Image, ImageDraw, ImageFont
+import os
 
 try:
     i2c = busio.I2C(board.SCL, board.SDA)
@@ -116,8 +120,11 @@ display.contrast(200)
 font = ImageFont.load_default()
 
 spinner = ["|", "/", "-", "\\"]
-for _ in range(10):
+flag = "/tmp/streamer_oled_spinner.stop"
+while not os.path.exists(flag):
     for frame in spinner:
+        if os.path.exists(flag):
+            break
         image = Image.new("1", (128, 64))
         draw = ImageDraw.Draw(image)
         draw.text((0, 0), "Updating...", font=font, fill=255)
@@ -125,17 +132,9 @@ for _ in range(10):
         display.image(image)
         display.show()
         time.sleep(0.2)
-EOF
-
-echo -e "${BLUE}Krok 1: Aktualizacja systemu${RESET}"
-(sudo apt update && sudo apt upgrade -y) &
-spinner $!
-log "System zaktualizowany."
-pause_step
-
-echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
-(sudo apt install -y git python3 python3-pip python3-venv python3-pil \
-    mpd mpc alsa-utils i2c-tools jq curl wget unzip sox) &
+PY
+python3 "$SPINNER_SCRIPT" &
+SPINNER_PID=$!
 spinner $!
 log "Pakiety zainstalowane."
 pause_step
