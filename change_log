@@ -9,6 +9,7 @@
 - wygaszanie OLED ustawia jasność na 0%
 - instalator zatrzymuje usługi i pokazuje ekran "Updating..."
 - naprawiono błąd składni instalatora w kroku 4 (I2C/config.txt)
+- poprawiono heredoc w teście OLED (bez błędu składni)
 
 ## 0.07a7 – menu OLED + poprawki instalatora
 - dodano menu w ekranie OLED
