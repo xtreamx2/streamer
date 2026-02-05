@@ -99,8 +99,21 @@ echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
 
 CHANGES=0
 ensure_line "dtoverlay=hifiberry-dac" "$CONFIG_TXT" && CHANGES=1
-ensure_line "dtparam=i2c_arm=on" "$CONFIG_TXT" && CHANGES=1
-ensure_line "dtparam=i2s=on" "$CONFIG_TXT" && CHANGES=1
+if grep -q "^#dtparam=i2c_arm=on" "$CONFIG_TXT"; then
+    sudo sed -i 's/^#dtparam=i2c_arm=on/dtparam=i2c_arm=on/' "$CONFIG_TXT"
+    log "Odkomentowano dtparam=i2c_arm=on."
+    CHANGES=1
+else
+    ensure_line "dtparam=i2c_arm=on" "$CONFIG_TXT" && CHANGES=1
+fi
+
+if grep -q "^#dtparam=i2s=on" "$CONFIG_TXT"; then
+    sudo sed -i 's/^#dtparam=i2s=on/dtparam=i2s=on/' "$CONFIG_TXT"
+    log "Odkomentowano dtparam=i2s=on."
+    CHANGES=1
+else
+    ensure_line "dtparam=i2s=on" "$CONFIG_TXT" && CHANGES=1
+fi
 
 if grep -q "^dtparam=audio=on" "$CONFIG_TXT"; then
     sudo sed -i 's/^dtparam=audio=on/#dtparam=audio=on/' "$CONFIG_TXT"
