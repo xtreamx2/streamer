@@ -263,47 +263,47 @@ log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
 CLONE_OK=0
 if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
     "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
-    if [ -n "$(ls -A "$TMP_DIR")" ]; then
-        CLONE_OK=1
-    fi
-fi
+echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
-if [ "$CLONE_OK" -ne 1 ]; then
-    log "Git clone nieudany, próbuję pobrać archiwum z GitHuba."
-    if [[ "$REPO_GIT" =~ github.com/([^/]+)/([^/.]+)(\.git)?$ ]]; then
-        OWNER="${BASH_REMATCH[1]}"
-        REPO_NAME="${BASH_REMATCH[2]}"
-        ARCHIVE_URL="https://github.com/${OWNER}/${REPO_NAME}/archive/refs/heads/${REPO_BRANCH}.tar.gz"
-        ARCHIVE_FILE="$(mktemp)"
-        if curl -fL --retry 3 --retry-delay 2 "$ARCHIVE_URL" -o "$ARCHIVE_FILE" 2>&1 | tee -a "$LOGFILE"; then
-            tar -xzf "$ARCHIVE_FILE" -C "$TMP_DIR" --strip-components=1
-            log "Archiwum pobrane i rozpakowane."
-        else
-            log "Błąd: nie udało się pobrać archiwum z GitHuba!"
-            exit 1
-        fi
-    else
-        log "Błąd: nie udało się pobrać repozytorium!"
-        exit 1
-    fi
-fi
+if [ "$OLED_PRESENT" -eq 1 ]; then
+python3 <<'EOF'
+import time
+import board, busio
+from adafruit_ssd1306 import SSD1306_I2C
+from PIL import Image, ImageDraw, ImageFont
 
-rsync -av \
-    --exclude=installer \
-    --exclude=logs \
-    --exclude=.git \
-    --exclude=.gitignore \
-    "$TMP_DIR/" "$STREAMER_DIR/"
+try:
+    i2c = busio.I2C(board.SCL, board.SDA)
+    display = SSD1306_I2C(128, 64, i2c, addr=0x3C)
+except Exception as e:
+    print("OLED not detected:", e)
+    exit(0)
 
-log "Repozytorium zsynchronizowane."
-pause_step
+display.contrast(1)
 
-echo -e "${BLUE}Krok 12: Aktualizacja changelog${RESET}"
+image = Image.new("1", (128, 64))
+draw = ImageDraw.Draw(image)
+font = ImageFont.load_default()
 
-if [ -f "$CHANGELOG_SOURCE" ]; then
-    cp "$CHANGELOG_SOURCE" "$CHANGELOG_DIR/latest.txt"
-    log "Changelog zaktualizowany z repozytorium."
+text = "STREAMER"
+bbox = draw.textbbox((0, 0), text, font=font)
+w = bbox[2] - bbox[0]
+h = bbox[3] - bbox[1]
+
+draw.text(((128 - w) // 2, (64 - h) // 2), text, font=font, fill=255)
+
+display.image(image)
+display.show()
+
+time.sleep(2)
+
+display.fill(0)
+display.show()
+EOF
+    log "OLED test zakończony (niska jasność + wygaszenie)."
 else
+    log "OLED pominięty – brak urządzenia."
+fi
     log "Brak pliku change_log w repozytorium."
 fi
 
