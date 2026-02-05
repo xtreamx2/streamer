@@ -254,8 +254,9 @@ if ! GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
         REPO_NAME="${BASH_REMATCH[2]}"
         ARCHIVE_URL="https://github.com/${OWNER}/${REPO_NAME}/archive/refs/heads/${REPO_BRANCH}.tar.gz"
         ARCHIVE_FILE="$(mktemp)"
-        if curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_FILE" 2>&1 | tee -a "$LOGFILE"; then
+        if curl -fL --retry 3 --retry-delay 2 "$ARCHIVE_URL" -o "$ARCHIVE_FILE" 2>&1 | tee -a "$LOGFILE"; then
             tar -xzf "$ARCHIVE_FILE" -C "$TMP_DIR" --strip-components=1
+            log "Archiwum pobrane i rozpakowane."
         else
             log "Błąd: nie udało się pobrać archiwum z GitHuba!"
             exit 1
