@@ -139,16 +139,35 @@ def get_mpd_status(client):
 # OLED STATUS SCREEN
 # -------------------------------
 
+def draw_menu_bar(draw, font, width):
+    menu_items = ["RADIO", "INFO", "SET"]
+    bar_height = 12
+    draw.rectangle((0, 0, width, bar_height), fill=255)
+
+    x = 2
+    for item in menu_items:
+        bbox = draw.textbbox((0, 0), item, font=font)
+        text_width = bbox[2] - bbox[0]
+        draw.text((x, 1), item, font=font, fill=0)
+        x += text_width + 6
+
+    return bar_height
+
 def draw_status(display, info):
     image = Image.new("1", (128, 64))
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
 
-    line1 = info["station"][:20]
-    line2 = f"Vol:{info['volume']}%  {'▶' if info['state']=='play' else '❚❚' if info['state']=='pause' else '■'}"
+    menu_height = draw_menu_bar(draw, font, 128)
 
-    draw.text((0, 0), line1, font=font, fill=255)
-    draw.text((0, 16), line2, font=font, fill=255)
+    line1 = info["station"][:20]
+
+    line2 = (
+        f"Vol:{info['volume']}%  "
+        f"{'▶' if info['state']=='play' else '❚❚' if info['state']=='pause' else '■'}"
+    )
+    draw.text((0, menu_height + 2), line1, font=font, fill=255)
+    draw.text((0, menu_height + 18), line2, font=font, fill=255)
 
     display.image(image)
     display.show()
