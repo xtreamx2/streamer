@@ -11,6 +11,7 @@
 - naprawiono błąd składni instalatora w kroku 4 (I2C/config.txt)
 - poprawiono heredoc w teście OLED (bez błędu składni)
 - spinner OLED działa przez cały czas instalacji i nie blokuje skryptu
+- uruchamianie spinnera OLED w tle z logiem statusu instalatora
 
 ## 0.07a7 – menu OLED + poprawki instalatora
 - dodano menu w ekranie OLED
