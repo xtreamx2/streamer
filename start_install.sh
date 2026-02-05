@@ -142,6 +142,7 @@ echo -e "${BLUE}Krok 1: Aktualizacja systemu${RESET}"
 spinner $!
 log "System zaktualizowany."
 pause_step
+
 spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
