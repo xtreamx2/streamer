@@ -1,0 +1,13 @@
+[Unit]
+Description=Streamer Input Daemon
+After=mpd.service
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/streamer
+ExecStart=/usr/bin/python3 /home/%i/streamer/input/input_daemon.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
