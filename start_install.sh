@@ -6,7 +6,7 @@ fi
 set -o pipefail
 clear
 
-SOFT_VERSION="0.07a6"
+SOFT_VERSION="0.08a"
 
 RED="\e[31m"
 GREEN="\e[32m"
