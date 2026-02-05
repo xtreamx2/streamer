@@ -5,6 +5,7 @@
 - dodano menu OLED z trybem ustawień jasności/wygaszania i obsługą long-press
 - dodano usługę input.service i poprawiono wygaszanie OLED bez aktywności
 - ograniczono odświeżanie OLED w trybie wygaszania (bez migotania)
+- naprawiono błąd składni w oled_daemon
 
 ## 0.07a7 – menu OLED + poprawki instalatora
 - dodano menu w ekranie OLED
