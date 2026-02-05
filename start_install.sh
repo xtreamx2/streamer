@@ -146,6 +146,57 @@ echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
 spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
+
+echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
+
+CHANGES=0
+ensure_line "dtoverlay=hifiberry-dac" "$CONFIG_TXT" && CHANGES=1
+if grep -q "^#dtparam=i2c_arm=on" "$CONFIG_TXT"; then
+    sudo sed -i 's/^#dtparam=i2c_arm=on/dtparam=i2c_arm=on/' "$CONFIG_TXT"
+    log "Odkomentowano dtparam=i2c_arm=on."
+    CHANGES=1
+else
+    ensure_line "dtparam=i2c_arm=on" "$CONFIG_TXT" && CHANGES=1
+fi
+
+if grep -q "^#dtparam=i2s=on" "$CONFIG_TXT"; then
+    sudo sed -i 's/^#dtparam=i2s=on/dtparam=i2s=on/' "$CONFIG_TXT"
+    log "Odkomentowano dtparam=i2s=on."
+    CHANGES=1
+else
+    ensure_line "dtparam=i2s=on" "$CONFIG_TXT" && CHANGES=1
+fi
+
+if grep -q "^dtparam=audio=on" "$CONFIG_TXT"; then
+    sudo sed -i 's/^dtparam=audio=on/#dtparam=audio=on/' "$CONFIG_TXT"
+    log "Wyłączono wbudowane audio."
+    CHANGES=1
+fi
+
+log "Synchronizacja config.txt zakończona."
+
+MODULES_LOAD_DIR="/etc/modules-load.d"
+MODULES_LOAD_FILE="$MODULES_LOAD_DIR/streamer.conf"
+if [ -d "$MODULES_LOAD_DIR" ]; then
+    sudo touch "$MODULES_LOAD_FILE"
+    ensure_line "i2c-dev" "$MODULES_LOAD_FILE" && CHANGES=1
+    ensure_line "i2c-bcm2835" "$MODULES_LOAD_FILE" && CHANGES=1
+    log "Sprawdzono $MODULES_LOAD_FILE (I2C)."
+elif [ -f /etc/modules ]; then
+    ensure_line "i2c-dev" /etc/modules && CHANGES=1
+    ensure_line "i2c-bcm2835" /etc/modules && CHANGES=1
+    log "Sprawdzono /etc/modules (I2C)."
+fi
+
+if ! ls /dev/i2c-1 >/dev/null 2>&1; then
+    sudo modprobe i2c-dev
+    sudo modprobe i2c-bcm2835
+    if ls /dev/i2c-1 >/dev/null 2>&1; then
+        log "I2C aktywne (załadowano moduły kernel)."
+    else
+        log "Uwaga: /dev/i2c-1 nadal niedostępne — może być wymagany restart."
+    fi
+else
     log "I2C już aktywne (/dev/i2c-1 dostępne)."
 fi
 
@@ -174,57 +225,6 @@ else
     OLED_PRESENT=0
 fi
 pause_step
-
-echo -e "${BLUE}Krok 8: Dodanie stacji radiowej${RESET}"
-
-RADIO_URL="http://stream.rcs.revma.com/ye5kghkgcm0uv"
-
-if mpc playlist | grep -q "$RADIO_URL"; then
-    RADIO_NEW=0
-    log "Stacja radiowa już istnieje."
-else
-    mpc clear
-    mpc add "$RADIO_URL"
-
-    if ! mpc lsplaylists | grep -q "^radio$"; then
-        mpc save radio
-    fi
-
-    mpc volume 30
-    mpc play
-    RADIO_NEW=1
-    log "Dodano i uruchomiono Radio 357."
-fi
-
-pause_step
-
-echo -e "${BLUE}Krok 9: Test DAC${RESET}"
-
-TEST_WAV="$MEDIA_DIR/test.wav"
-
-log "Generuję test.wav (400 Hz, stereo, 0.5 s)."
-sox -n -r 48000 -b 16 -c 2 "$TEST_WAV" synth 0.5 sine 400
-
-mpc stop >/dev/null 2>&1
-sudo systemctl stop mpd
-
-aplay "$TEST_WAV" -D plughw:0,0
-log "Test DAC zakończony."
-pause_step
-
-echo -e "${BLUE}Krok 10: Test OLED${RESET}"
-
-if [ "$OLED_PRESENT" -eq 1 ]; then
-python3 << 'EOF'
-import time
-import board, busio
-from adafruit_ssd1306 import SSD1306_I2C
-from PIL import Image, ImageDraw, ImageFont
-
-try:
-    i2c = busio.I2C(board.SCL, board.SDA)
-    display = SSD1306_I2C(128, 64, i2c, addr=0x3C)
-except Exception as e:
     print("OLED not detected:", e)
     exit(0)
 
