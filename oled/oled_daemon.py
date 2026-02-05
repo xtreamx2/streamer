@@ -293,44 +293,44 @@ def main():
     display = init_display(oled_cfg)
     show_logo(display)
 
-    client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
-    last_activity = time.time()
+client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
+last_activity = time.time()
+last_power_state = None
 
-    try:
-        while True:
-            if client is None:
-                client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
+try:
+    while True:
+        if client is None:
+            client = connect_mpd(mpd_cfg["host"], mpd_cfg["port"])
 
-            info = get_mpd_status(client)
-            state = load_input_state()
-            mode = state.get("mode", "volume")
+        info = get_mpd_status(client)
+        state = load_input_state()
+        mode = state.get("mode", "volume")
 
-            if mode == "menu":
-                draw_menu(display, state, cfg)
-            elif mode == "settings":
-                draw_settings(display, state, cfg)
-            else:
-                draw_status(display, info, mode=mode)
+        if mode == "menu":
+            draw_menu(display, state, cfg)
+        elif mode == "settings":
+            draw_settings(display, state, cfg)
+        else:
+            draw_status(display, info, mode=mode)
 
-            last_activity = state.get("last_activity", last_activity)
-            idle = time.time() - last_activity
-            bright_active = brightness_to_contrast(oled_rt.get("brightness_active", 50))
-            bright_dim = brightness_to_contrast(oled_rt.get("brightness_dim", 10))
+        last_activity = state.get("last_activity", last_activity)
+        idle = time.time() - last_activity
+        bright_active = brightness_to_contrast(oled_rt.get("brightness_active", 50))
+        bright_dim = brightness_to_contrast(oled_rt.get("brightness_dim", 10))
 
-            if idle > oled_rt["off_timeout"]:
+        if idle > oled_rt["off_timeout"]:
+            if last_power_state != "off":
                 display.fill(0)
                 display.show()
-            elif idle > oled_rt["dim_timeout"]:
+                last_power_state = "off"
+        elif idle > oled_rt["dim_timeout"]:
+            if last_power_state != "dim":
                 display.contrast(bright_dim)
-            else:
+                last_power_state = "dim"
+        else:
+            if last_power_state != "active":
                 display.contrast(bright_active)
+                last_power_state = "active"
 
-            time.sleep(0.5)
-
-    finally:
-        pass
-
-
-if __name__ == "__main__":
-    main()
+        time.sleep(0.5)
     
