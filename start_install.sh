@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-SOFT_VERSION="0.07a5"
+SOFT_VERSION="0.07a6"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -82,15 +82,15 @@ log "System zaktualizowany."
 pause_step
 
 echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
-(sudo apt install -y git python3 python3-pip python3-venv \
+(sudo apt install -y git python3 python3-pip python3-venv python3-pil \
     mpd mpc alsa-utils i2c-tools jq curl wget unzip sox) &
 spinner $!
 log "Pakiety zainstalowane."
 pause_step
 
 echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
-(pip3 install --break-system-packages \
-    python-mpd2 RPi.GPIO pillow adafruit-circuitpython-ssd1306 requests) &
+(pip3 install --break-system-packages --prefer-binary \
+    python-mpd2 RPi.GPIO adafruit-circuitpython-ssd1306 requests) &
 spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
@@ -219,7 +219,7 @@ pause_step
 echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
 
 TMP_DIR=$(mktemp -d)
-git clone --depth=1 "$REPO_GIT" "$TMP_DIR" >/dev/null 2>&1
+GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$REPO_GIT" "$TMP_DIR" >/dev/null 2>&1
 
 if [ $? -ne 0 ]; then
     log "Błąd: nie udało się pobrać repozytorium!"
