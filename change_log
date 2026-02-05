@@ -6,6 +6,7 @@
 - naprawiono klonowanie repo bez pytania o login
 - zaktualizowano domyślny adres repozytorium i logowanie błędów pobierania
 - dodano fallback pobierania archiwum, gdy git clone zawiedzie
+- wymuszono domyślną gałąź main i weryfikację pobrania repo
 
 ## 0.07a5 – przeniesienie na GitHub i poprawki
 - przeniesienie na GitHub
