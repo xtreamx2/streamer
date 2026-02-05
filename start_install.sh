@@ -338,12 +338,15 @@ pause_step
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
+SCRIPT_PATH="$(realpath "$0" 2>/dev/null || true)"
 SCRIPT_NAME="$(basename "$0")"
-TARGET_PATH="$INSTALLER_DIR/$SCRIPT_NAME"
+TARGET_PATH="$INSTALLER_DIR/${SCRIPT_NAME:-start_install.sh}"
 
-if [ "$(realpath "$0")" != "$TARGET_PATH" ]; then
-    cp "$0" "$TARGET_PATH"
-    rm "$0"
+if [ "$SCRIPT_NAME" = "bash" ] || [ ! -f "$SCRIPT_PATH" ]; then
+    log "Uruchomiono instalator z wejścia standardowego — pomijam przenoszenie pliku."
+elif [ "$SCRIPT_PATH" != "$TARGET_PATH" ]; then
+    cp "$SCRIPT_PATH" "$TARGET_PATH"
+    rm "$SCRIPT_PATH"
     log "Instalator przeniesiony do $TARGET_PATH"
 fi
 
