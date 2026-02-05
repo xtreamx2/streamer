@@ -109,6 +109,19 @@ if grep -q "^dtparam=audio=on" "$CONFIG_TXT"; then
 fi
 
 log "Synchronizacja config.txt zakończona."
+
+if ! ls /dev/i2c-1 >/dev/null 2>&1; then
+    sudo modprobe i2c-dev
+    sudo modprobe i2c-bcm2835
+    if ls /dev/i2c-1 >/dev/null 2>&1; then
+        log "I2C aktywne (załadowano moduły kernel)."
+    else
+        log "Uwaga: /dev/i2c-1 nadal niedostępne — może być wymagany restart."
+    fi
+else
+    log "I2C już aktywne (/dev/i2c-1 dostępne)."
+fi
+
 pause_step
 
 echo -e "${BLUE}Krok 5: Restart MPD${RESET}"
