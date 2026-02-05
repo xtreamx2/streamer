@@ -245,11 +245,25 @@ pause_step
 echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
 
 TMP_DIR=$(mktemp -d)
-GIT_TERMINAL_PROMPT=0 git clone --depth=1 "$REPO_GIT" "$TMP_DIR" >/dev/null 2>&1
-
-if [ $? -ne 0 ]; then
-    log "Błąd: nie udało się pobrać repozytorium!"
-    exit 1
+log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
+if ! GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
+    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
+    log "Git clone nieudany, próbuję pobrać archiwum z GitHuba."
+    if [[ "$REPO_GIT" =~ github.com/([^/]+)/([^/.]+)(\.git)?$ ]]; then
+        OWNER="${BASH_REMATCH[1]}"
+        REPO_NAME="${BASH_REMATCH[2]}"
+        ARCHIVE_URL="https://github.com/${OWNER}/${REPO_NAME}/archive/refs/heads/${REPO_BRANCH}.tar.gz"
+        ARCHIVE_FILE="$(mktemp)"
+        if curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_FILE" 2>&1 | tee -a "$LOGFILE"; then
+            tar -xzf "$ARCHIVE_FILE" -C "$TMP_DIR" --strip-components=1
+        else
+            log "Błąd: nie udało się pobrać archiwum z GitHuba!"
+            exit 1
+        fi
+    else
+        log "Błąd: nie udało się pobrać repozytorium!"
+        exit 1
+    fi
 fi
 
 rsync -av \
