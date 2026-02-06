@@ -224,12 +224,11 @@ else
     log "Nie wykryto DAC!"
 fi
 
-# Stop spinner to free OLED before detection/test
 if [ -n "${SPINNER_PID:-}" ]; then
     touch "$SPINNER_FLAG"
-    kill "$SPINNER_PID" >/dev/null 2>&1 || true
+    kill -9 "$SPINNER_PID" >/dev/null 2>&1 || true
+    sleep 1
     unset SPINNER_PID
-    sleep 0.3
 fi
 
 # --- Krok 7: Autodetekcja OLED (bezpieczna wersja) ---
@@ -487,28 +486,28 @@ else
     log "Brak pliku change_log w repozytorium."
 fi
 
-echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
+echo -e "${BLUE}Krok 13: Instalacja usług systemd (VENV MODE)${RESET}"
 
-CURRENT_USER="$(whoami)"
+# Ścieżka do pythona wewnątrz Twojego venv
+VENV_PYTHON="$STREAMER_DIR/venv/bin/python3"
 
 if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
-    sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
-    sudo sed -i "s/%i/$CURRENT_USER/g" /etc/systemd/system/oled.service
+    # 1. Najpierw robimy kopię roboczą pliku usługi
+    cp "$STREAMER_DIR/systemd/oled.service" /tmp/oled.service
+    
+    # 2. Podmieniamy ścieżkę do Pythona na tę z VENV
+    # Szukamy linii zaczynającej się od ExecStart i zmieniamy początek na ścieżkę do venv
+    sed -i "s|ExecStart=python3|ExecStart=$VENV_PYTHON|g" /tmp/oled.service
+    # Na wypadek gdyby w pliku była pełna ścieżka /usr/bin/python3:
+    sed -i "s|ExecStart=/usr/bin/python3|ExecStart=$VENV_PYTHON|g" /tmp/oled.service
+
+    # 3. Kopiujemy poprawiony plik do folderu systemowego
+    sudo cp /tmp/oled.service /etc/systemd/system/oled.service
+    
+    sudo systemctl daemon-reload
     sudo systemctl enable oled.service
     sudo systemctl restart oled.service
-    log "Usługa OLED zainstalowana i uruchomiona."
-else
-    log "Brak pliku systemd/oled.service w repozytorium."
-fi
-
-if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
-    sudo cp "$STREAMER_DIR/systemd/input.service" /etc/systemd/system/input.service
-    sudo sed -i "s/%i/$CURRENT_USER/g" /etc/systemd/system/input.service
-    sudo systemctl enable input.service
-    sudo systemctl restart input.service
-    log "Usługa INPUT zainstalowana i uruchomiona."
-else
-    log "Brak pliku systemd/input.service w repozytorium (pomijam)."
+    log "Usługa OLED zainstalowana z użyciem VENV."
 fi
 
 sudo systemctl daemon-reload
