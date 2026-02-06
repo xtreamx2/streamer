@@ -6,7 +6,7 @@ fi
 set -o pipefail
 clear
 
-SOFT_VERSION="0.08a1a"
+SOFT_VERSION="0.08a1b"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -486,30 +486,36 @@ else
     log "Brak pliku change_log w repozytorium."
 fi
 
-echo -e "${BLUE}Krok 13: Instalacja usług systemd (Naprawiony)${RESET}"
+echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
 
 REAL_USER="${SUDO_USER:-$USER}"
 VENV_PYTHON="$STREAMER_DIR/venv/bin/python3"
 
+# 1. Naprawa oled.service (Usługa systemowa)
 if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
-    # Kopiujemy do systemd
     sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
     
-    # Naprawiamy uprawnienia i ścieżki bezpośrednio w pliku
+    # Podmiana User, WorkingDirectory i ExecStart na absolutne ścieżki
     sudo sed -i "s|^User=.*|User=$REAL_USER|" /etc/systemd/system/oled.service
     sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$STREAMER_DIR|" /etc/systemd/system/oled.service
-    # Kluczowe: ustawienie ExecStart na Python z VENV
     sudo sed -i "s|^ExecStart=.*|ExecStart=$VENV_PYTHON $STREAMER_DIR/oled/oled_daemon.py|" /etc/systemd/system/oled.service
-
+    
     sudo systemctl daemon-reload
     sudo systemctl enable oled.service
-    if sudo systemctl restart oled.service; then
-        log "Usługa OLED uruchomiona pomyślnie."
-    else
-        log "Błąd: oled.service nie wstał. Sprawdź: journalctl -xeu oled.service"
-    fi
-else
-    log "Błąd: Nie znaleziono pliku $STREAMER_DIR/systemd/oled.service"
+    sudo systemctl restart oled.service
+    log "Usługa oled.service skonfigurowana pod użytkownika $REAL_USER"
+fi
+
+# 2. Naprawa input.service
+if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
+    sudo cp "$STREAMER_DIR/systemd/input.service" /etc/systemd/system/input.service
+    sudo sed -i "s|^User=.*|User=$REAL_USER|" /etc/systemd/system/input.service
+    sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$STREAMER_DIR|" /etc/systemd/system/input.service
+    sudo sed -i "s|^ExecStart=.*|ExecStart=$VENV_PYTHON $STREAMER_DIR/input/input_daemon.py|" /etc/systemd/system/input.service
+    
+    sudo systemctl enable input.service
+    sudo systemctl restart input.service
+    log "Usługa input.service skonfigurowana."
 fi
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
