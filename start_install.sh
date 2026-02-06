@@ -147,6 +147,20 @@ spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
 
+echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
+(sudo apt install -y git python3 python3-pip python3-venv python3-pil \
+    mpd mpc alsa-utils i2c-tools jq curl wget unzip sox) &
+spinner $!
+log "Pakiety zainstalowane."
+pause_step
+
+echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
+(pip3 install --break-system-packages --prefer-binary \
+    python-mpd2 RPi.GPIO adafruit-circuitpython-ssd1306 requests) &
+spinner $!
+log "Biblioteki Python zainstalowane."
+pause_step
+
 echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
 
 CHANGES=0
