@@ -6,7 +6,7 @@ fi
 set -o pipefail
 clear
 
-SOFT_VERSION="0.08a"
+SOFT_VERSION="0.08a1"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -232,17 +232,37 @@ if [ -n "${SPINNER_PID:-}" ]; then
     sleep 0.3
 fi
 
+# --- Krok 7: Autodetekcja OLED (bezpieczna wersja) ---
+# Ensure oled.service not running so it doesn't auto-start spinner
+if systemctl is-active --quiet oled.service; then
+    sudo systemctl stop oled.service >/dev/null 2>&1 || true
+    log "oled.service zatrzymany na czas detekcji."
+fi
+
+# Stop spinner process if running (zwalnia dostęp do wyświetlacza)
+if [ -n "${SPINNER_PID:-}" ]; then
+    touch "$SPINNER_FLAG"
+    kill "$SPINNER_PID" >/dev/null 2>&1 || true
+    unset SPINNER_PID
+    sleep 0.3
+    log "Spinner zatrzymany przed detekcją OLED."
+fi
+
 echo -e "${BLUE}Krok 7: Autodetekcja OLED${RESET}"
-# sprawdź adresy 0x3C lub 0x3D
-if sudo i2cdetect -y 1 | grep -qiE "3[cd]"; then
-    log "OLED wykryty."
+
+# Zapisz output i2cdetect do zmiennej i do logu — ułatwia diagnostykę
+I2C_OUT=$(sudo i2cdetect -y 1 2>/dev/null || true)
+echo "$I2C_OUT" | sed 's/^/    /' >> "$LOGFILE"
+# wykryj 3c lub 3d (case-insensitive)
+if echo "$I2C_OUT" | grep -qiE '(^|[[:space:]])3[cC]([[:space:]]|$)|(^|[[:space:]])3[dD]([[:space:]]|$)'; then
+    log "OLED wykryty na magistrali I2C."
     OLED_PRESENT=1
 else
-    log "OLED nie wykryty."
+    log "OLED nie wykryty (i2cdetect nie zwrócił adresu 3c/3d)."
     OLED_PRESENT=0
 fi
 
-# Jeśli wykryto OLED, wykonaj test (heredoc -> python)
+# Jeżeli wykryto urządzenie, uruchom hermetyczny test Pythona (zapisany do pliku i uruchomiony)
 if [ "$OLED_PRESENT" -eq 1 ]; then
     OLED_TEST_SCRIPT="/tmp/streamer_oled_test.py"
     cat <<'PY' > "$OLED_TEST_SCRIPT"
@@ -279,17 +299,12 @@ display.fill(0)
 display.show()
 PY
     python3 "$OLED_TEST_SCRIPT"
-    log "OLED test zakończony (niska jasność + wygaszenie)."
+    log "OLED test zakończony (test wyświetlenia)."
 else
     log "OLED pominięty – brak urządzenia."
 fi
 
-# (opcjonalnie) wznowienie spinnera, jeśli chcesz by dalej pokazywał postęp:
-if [ -f "$SPINNER_SCRIPT" ] && [ -z "${SPINNER_PID:-}" ]; then
-    python3 "$SPINNER_SCRIPT" >/dev/null 2>&1 &
-    SPINNER_PID=$!
-    log "Spinner wznowiony."
-fi
+# Nie wznawiamy spinnera od razu: spinner ma być wznawiany dopiero gdy jest to potrzebne
 
 echo -e "${BLUE}Krok 8: Dodanie stacji radiowej${RESET}"
 
