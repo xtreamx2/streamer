@@ -99,7 +99,6 @@ if systemctl is-active --quiet input.service; then
     log "Usługa INPUT zatrzymana na czas instalacji."
 fi
 
-echo -e "${BLUE}Krok 0a: Ekran instalacji${RESET}"
 SPINNER_FLAG="/tmp/streamer_oled_spinner.stop"
 SPINNER_SCRIPT="/tmp/streamer_oled_spinner.py"
 rm -f "$SPINNER_FLAG"
@@ -144,8 +143,6 @@ log "System zaktualizowany."
 pause_step
 
 spinner $!
-log "Biblioteki Python zainstalowane."
-pause_step
 
 echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
 (sudo apt install -y git python3 python3-pip python3-venv python3-pil \
@@ -231,7 +228,8 @@ fi
 pause_step
 
 echo -e "${BLUE}Krok 7: Autodetekcja OLED${RESET}"
-if sudo i2cdetect -y 1 | grep -q "3c"; then
+# sprawdź adresy 0x3C lub 0x3D
+if sudo i2cdetect -y 1 | grep -qiE "3[cd]"; then
     log "OLED wykryty."
     OLED_PRESENT=1
 else
@@ -240,11 +238,96 @@ else
 fi
 pause_step
 
+# Stop the spinner before running any python OLED test to avoid display contention
+if [ -n "${SPINNER_PID:-}" ]; then
+    touch "$SPINNER_FLAG"
+    kill "$SPINNER_PID" >/dev/null 2>&1 || true
+    unset SPINNER_PID
+fi
+
+# Jeśli wykryto OLED, wykonaj test (heredoc -> python)
+if [ "$OLED_PRESENT" -eq 1 ]; then
+    OLED_TEST_SCRIPT="/tmp/streamer_oled_test.py"
+    cat <<'PY' > "$OLED_TEST_SCRIPT"
+import time
+import board, busio
+from adafruit_ssd1306 import SSD1306_I2C
+from PIL import Image, ImageDraw, ImageFont
+
+i2c = busio.I2C(board.SCL, board.SDA)
+display = None
+for addr in (0x3C, 0x3D):
+    try:
+        display = SSD1306_I2C(128, 64, i2c, addr=addr)
+        print("OLED opened at 0x%02x" % addr)
+        break
+    except Exception as e:
+        print("Open failed at 0x%02x: %s" % (addr, e))
+if display is None:
+    raise SystemExit(0)
+
+display.contrast(1)
+font = ImageFont.load_default()
+image = Image.new("1", (128, 64))
+draw = ImageDraw.Draw(image)
+text = "STREAMER"
+bbox = draw.textbbox((0, 0), text, font=font)
+w = bbox[2] - bbox[0]
+h = bbox[3] - bbox[1]
+draw.text(((128 - w) // 2, (64 - h) // 2), text, font=font, fill=255)
+display.image(image)
+display.show()
+time.sleep(2)
+display.fill(0)
+display.show()
+PY
+    python3 "$OLED_TEST_SCRIPT"
+    log "OLED test zakończony (niska jasność + wygaszenie)."
+else
+    log "OLED pominięty – brak urządzenia."
+fi
+
+echo -e "${BLUE}Krok 8: Dodanie stacji radiowej${RESET}"
+
+RADIO_URL="http://stream.rcs.revma.com/ye5kghkgcm0uv"
+
+if mpc playlist | grep -q "$RADIO_URL"; then
+    RADIO_NEW=0
+    log "Stacja radiowa już istnieje."
+else
+    mpc clear
+    mpc add "$RADIO_URL"
+
+    if ! mpc lsplaylists | grep -q "^radio$"; then
+        mpc save radio
+    fi
+
+    mpc volume 30
+    mpc play
+    RADIO_NEW=1
+    log "Dodano i uruchomiono Radio 357."
+fi
+
+pause_step
+
+echo -e "${BLUE}Krok 9: Test DAC${RESET}"
+
+TEST_WAV="$MEDIA_DIR/test.wav"
+
+log "Generuję test.wav (400 Hz, stereo, 0.5 s)."
+sox -n -r 48000 -b 16 -c 2 "$TEST_WAV" synth 0.5 sine 400
+
+mpc stop >/dev/null 2>&1
+sudo systemctl stop mpd
+
+aplay "$TEST_WAV" -D plughw:0,0
+log "Test DAC zakończony."
+pause_step
+
 echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
 if [ "$OLED_PRESENT" -eq 1 ]; then
-OLED_TEST_SCRIPT="/tmp/streamer_oled_test.py"
-cat <<'PY' > "$OLED_TEST_SCRIPT"
+python3 << 'EOF'
 import time
 import board, busio
 from adafruit_ssd1306 import SSD1306_I2C
@@ -277,12 +360,73 @@ time.sleep(2)
 
 display.fill(0)
 display.show()
-PY
-python3 "$OLED_TEST_SCRIPT"
+EOF
     log "OLED test zakończony (niska jasność + wygaszenie)."
 else
     log "OLED pominięty – brak urządzenia."
 fi
+
+pause_step
+
+echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
+
+TMP_DIR=$(mktemp -d)
+log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
+CLONE_OK=0
+if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
+    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
+    if [ -n "$(ls -A "$TMP_DIR")" ]; then
+        CLONE_OK=1
+    fi
+fi
+
+if [ "$CLONE_OK" -ne 1 ]; then
+    log "Git clone nieudany, próbuję pobrać archiwum z GitHuba."
+    if [[ "$REPO_GIT" =~ github.com/([^/]+)/([^/.]+)(\.git)?$ ]]; then
+        OWNER="${BASH_REMATCH[1]}"
+        REPO_NAME="${BASH_REMATCH[2]}"
+        ARCHIVE_URL="https://github.com/${OWNER}/${REPO_NAME}/archive/refs/heads/${REPO_BRANCH}.tar.gz"
+        ARCHIVE_FILE="$(mktemp)"
+        if curl -fL --retry 3 --retry-delay 2 "$ARCHIVE_URL" -o "$ARCHIVE_FILE" 2>&1 | tee -a "$LOGFILE"; then
+            tar -xzf "$ARCHIVE_FILE" -C "$TMP_DIR" --strip-components=1
+            log "Archiwum pobrane i rozpakowane."
+        else
+            log "Błąd: nie udało się pobrać archiwum z GitHuba!"
+            exit 1
+        fi
+    else
+        log "Błąd: nie udało się pobrać repozytorium!"
+        exit 1
+    fi
+fi
+
+rsync -av \
+    --exclude=installer \
+    --exclude=logs \
+    --exclude=.git \
+    --exclude=.gitignore \
+    "$TMP_DIR/" "$STREAMER_DIR/"
+
+log "Repozytorium zsynchronizowane."
+pause_step
+
+echo -e "${BLUE}Krok 12: Aktualizacja changelog${RESET}"
+
+if [ -f "$CHANGELOG_SOURCE" ]; then
+    cp "$CHANGELOG_SOURCE" "$CHANGELOG_DIR/latest.txt"
+    log "Changelog zaktualizowany z repozytorium."
+else
+    log "Brak pliku change_log w repozytorium."
+fi
+
+pause_step
+
+echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
+
+CURRENT_USER="$(whoami)"
+
+if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
+    sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
     sudo sed -i "s/%i/$CURRENT_USER/g" /etc/systemd/system/oled.service
     sudo systemctl enable oled.service
     sudo systemctl restart oled.service
@@ -303,22 +447,6 @@ fi
 
 sudo systemctl daemon-reload
 pause_step
-
-echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
-
-TMP_DIR=$(mktemp -d)
-log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
-CLONE_OK=0
-if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
-    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
-echo -e "${BLUE}Krok 10: Test OLED${RESET}"
-
-if [ "$OLED_PRESENT" -eq 1 ]; then
-python3 <<'EOF'
-import time
-import board, busio
-from adafruit_ssd1306 import SSD1306_I2C
-from PIL import Image, ImageDraw, ImageFont
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
