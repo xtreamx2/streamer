@@ -147,6 +147,20 @@ spinner $!
 log "Biblioteki Python zainstalowane."
 pause_step
 
+echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
+(sudo apt install -y git python3 python3-pip python3-venv python3-pil \
+    mpd mpc alsa-utils i2c-tools jq curl wget unzip sox) &
+spinner $!
+log "Pakiety zainstalowane."
+pause_step
+
+echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
+(pip3 install --break-system-packages --prefer-binary \
+    python-mpd2 RPi.GPIO adafruit-circuitpython-ssd1306 requests) &
+spinner $!
+log "Biblioteki Python zainstalowane."
+pause_step
+
 echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
 
 CHANGES=0
@@ -224,36 +238,6 @@ else
     log "OLED nie wykryty."
     OLED_PRESENT=0
 fi
-pause_step
-    print("OLED not detected:", e)
-    exit(0)
-
-display.contrast(1)
-
-image = Image.new("1", (128, 64))
-draw = ImageDraw.Draw(image)
-font = ImageFont.load_default()
-
-text = "STREAMER"
-bbox = draw.textbbox((0, 0), text, font=font)
-w = bbox[2] - bbox[0]
-h = bbox[3] - bbox[1]
-
-draw.text(((128 - w) // 2, (64 - h) // 2), text, font=font, fill=255)
-
-display.image(image)
-display.show()
-
-time.sleep(2)
-
-display.fill(0)
-display.show()
-EOF
-    log "OLED test zakończony (niska jasność + wygaszenie)."
-else
-    log "OLED pominięty – brak urządzenia."
-fi
-
 pause_step
 
 echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
