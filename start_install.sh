@@ -22,6 +22,12 @@ CHANGELOG_DIR="$STREAMER_DIR/changelog"
 CHANGELOG_SOURCE="$STREAMER_DIR/change_log"
 MEDIA_DIR="$STREAMER_DIR/media"
 OLED_DIR="$STREAMER_DIR/oled"
+REAL_USER="${SUDO_USER:-$(whoami)}"
+USER_HOME=$(eval echo "~$REAL_USER")
+
+STREAMER_DIR="$USER_HOME/streamer"
+VENV_DIR="$STREAMER_DIR/venv"
+VENV_PYTHON="$VENV_DIR/bin/python3"
 
 LOGFILE="$LOG_DIR/install.log"
 
@@ -486,37 +492,36 @@ else
     log "Brak pliku change_log w repozytorium."
 fi
 
-echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
+echo -e "${BLUE}Krok 13: Instalacja usług systemd (WERSJA UNIWERSALNA)${RESET}"
 
-REAL_USER="${SUDO_USER:-$USER}"
-VENV_PYTHON="$STREAMER_DIR/venv/bin/python3"
+# Lista usług do przetworzenia
+SERVICES=("oled.service" "input.service")
 
-# 1. Naprawa oled.service (Usługa systemowa)
-if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
-    sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
-    
-    # Podmiana User, WorkingDirectory i ExecStart na absolutne ścieżki
-    sudo sed -i "s|^User=.*|User=$REAL_USER|" /etc/systemd/system/oled.service
-    sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$STREAMER_DIR|" /etc/systemd/system/oled.service
-    sudo sed -i "s|^ExecStart=.*|ExecStart=$VENV_PYTHON $STREAMER_DIR/oled/oled_daemon.py|" /etc/systemd/system/oled.service
-    
-    sudo systemctl daemon-reload
-    sudo systemctl enable oled.service
-    sudo systemctl restart oled.service
-    log "Usługa oled.service skonfigurowana pod użytkownika $REAL_USER"
-fi
+for SERVICE in "${SERVICES[@]}"; do
+    if [ -f "$STREAMER_DIR/systemd/$SERVICE" ]; then
+        # 1. Kopiujemy plik do katalogu systemowego
+        sudo cp "$STREAMER_DIR/systemd/$SERVICE" "/etc/systemd/system/$SERVICE"
+        
+        # 2. Dynamicznie podmieniamy parametry pod bieżącego użytkownika
+        # Używamy znaku | jako separatora w sed, bo ścieżki mają ukośniki /
+        sudo sed -i "s|^User=.*|User=$REAL_USER|" "/etc/systemd/system/$SERVICE"
+        sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$STREAMER_DIR|" "/etc/systemd/system/$SERVICE"
+        
+        # Wybieramy odpowiedni skrypt startowy w zależności od usługi
+        if [ "$SERVICE" == "oled.service" ]; then
+            SCRIPT_PATH="$STREAMER_DIR/oled/oled_daemon.py"
+        else
+            SCRIPT_PATH="$STREAMER_DIR/input/input_daemon.py"
+        fi
+        
+        sudo sed -i "s|^ExecStart=.*|ExecStart=$VENV_PYTHON $SCRIPT_PATH|" "/etc/systemd/system/$SERVICE"
 
-# 2. Naprawa input.service
-if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
-    sudo cp "$STREAMER_DIR/systemd/input.service" /etc/systemd/system/input.service
-    sudo sed -i "s|^User=.*|User=$REAL_USER|" /etc/systemd/system/input.service
-    sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$STREAMER_DIR|" /etc/systemd/system/input.service
-    sudo sed -i "s|^ExecStart=.*|ExecStart=$VENV_PYTHON $STREAMER_DIR/input/input_daemon.py|" /etc/systemd/system/input.service
-    
-    sudo systemctl enable input.service
-    sudo systemctl restart input.service
-    log "Usługa input.service skonfigurowana."
-fi
+        # 3. Aktywujemy usługę
+        sudo systemctl daemon-reload
+        sudo systemctl enable "$SERVICE"
+        sudo systemctl restart "$SERVICE"
+        log "Zainstalowano $SERVICE dla użytkownika $REAL_USER"
+    fi
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
