@@ -1,14 +1,16 @@
 [Unit]
-Description=STREAMER OLED menu service
-After=network.target sound.target
+Description=STREAMER OLED menu service (user)
+After=default.target mpd.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/env python3 /opt/streamer/oled/menu_service.py
+Environment="ENC_A=24" "ENC_B=23" "BTN=13" "DIM_TIMEOUT=30" "INVERT_ROT=0"
+WorkingDirectory=%h/streamer
+ExecStart=%h/streamer/venv/bin/python %h/streamer/oled/menu_service.py
 Restart=on-failure
-# Run as root (GPIO access); change to specific user if you configured permissions
-User=root
-Group=root
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
