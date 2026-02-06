@@ -426,6 +426,56 @@ rsync -av \
     --exclude=.gitignore \
     "$TMP_DIR/" "$STREAMER_DIR/"
 
+# === Utworzenie venv i instalacja deps dla użytkownika (umieszczone w $HOME/streamer) ===
+# Określamy rzeczywistego użytkownika (jeśli instalator uruchomiony przez sudo)
+if [ -n "${SUDO_USER:-}" ]; then
+  REAL_USER="$SUDO_USER"
+else
+  REAL_USER="$(whoami)"
+fi
+USER_HOME=$(eval echo "~$REAL_USER")
+STREAMER_DIR="$USER_HOME/streamer"
+VENV_DIR="$STREAMER_DIR/venv"
+
+echo "Instalacja venv i zależności dla użytkownika: $REAL_USER w $STREAMER_DIR"
+
+# Upewnij się, że katalog projektu istnieje (repo powinien być już sklonowany/synchronizowany)
+mkdir -p "$STREAMER_DIR"
+chown -R "$REAL_USER":"$REAL_USER" "$STREAMER_DIR"
+
+# Stwórz venv jako REAL_USER (jeżeli jeszcze nie istnieje)
+if [ ! -d "$VENV_DIR" ]; then
+  sudo -u "$REAL_USER" python3 -m venv "$VENV_DIR"
+  sudo -u "$REAL_USER" "$VENV_DIR/bin/pip" install --upgrade pip
+  # Zainstaluj wymagane pakiety w venv
+  sudo -u "$REAL_USER" "$VENV_DIR/bin/pip" install adafruit-blinka adafruit-circuitpython-ssd1306 Pillow RPi.GPIO
+fi
+
+mkdir -p "$USER_HOME/.config/systemd/user"
+chown -R "$REAL_USER":"$REAL_USER" "$USER_HOME/.config/systemd/user"
+
+# Zakładamy, że w repo jest plik systemd/oled-menu.service (dostosuj ścieżkę jeśli inna)
+if [ -f "$PWD/streamer/systemd/oled-menu.service" ]; then
+  cp "$PWD/streamer/systemd/oled-menu.service" "$USER_HOME/.config/systemd/user/oled-menu.service"
+  chown "$REAL_USER":"$REAL_USER" "$USER_HOME/.config/systemd/user/oled-menu.service"
+else
+  echo "Uwaga: nie znaleziono streamer/systemd/oled-menu.service w bieżącym katalogu. Upewnij się, że unit jest w repo."
+fi
+
+# Dodaj użytkownika do wymaganych grup (i2c, gpio, audio) — wywoływane jako sudo
+sudo usermod -aG i2c,gpio,audio "$REAL_USER" || true
+
+# Włącz lingering (jeśli chcesz, żeby user services uruchamiały się bez logowania)
+sudo loginctl enable-linger "$REAL_USER" || true
+
+# Przeładuj user systemd i uruchom unit jako REAL_USER
+# Używamy runuser/su aby wykonać systemctl --user w kontekście użytkownika
+sudo -u "$REAL_USER" bash -c 'systemctl --user daemon-reload || true'
+sudo -u "$REAL_USER" bash -c 'systemctl --user enable --now oled-menu.service || true'
+
+# Upewnij się o własności plików w streamer
+chown -R "$REAL_USER":"$REAL_USER" "$STREAMER_DIR"
+
 log "Repozytorium zsynchronizowane."
 
 echo -e "${BLUE}Krok 12: Aktualizacja changelog${RESET}"
