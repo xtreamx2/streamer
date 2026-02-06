@@ -1,0 +1,14 @@
+[Unit]
+Description=STREAMER OLED menu service
+After=network.target sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env python3 /opt/streamer/oled/menu_service.py
+Restart=on-failure
+# Run as root (GPIO access); change to specific user if you configured permissions
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
