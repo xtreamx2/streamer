@@ -240,22 +240,6 @@ else
 fi
 pause_step
 
-echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
-
-TMP_DIR=$(mktemp -d)
-log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
-CLONE_OK=0
-if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
-    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
-echo -e "${BLUE}Krok 10: Test OLED${RESET}"
-
-if [ "$OLED_PRESENT" -eq 1 ]; then
-python3 <<'EOF'
-import time
-import board, busio
-from adafruit_ssd1306 import SSD1306_I2C
-from PIL import Image, ImageDraw, ImageFont
-
 echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
 if [ "$OLED_PRESENT" -eq 1 ]; then
@@ -319,6 +303,22 @@ fi
 
 sudo systemctl daemon-reload
 pause_step
+
+echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
+
+TMP_DIR=$(mktemp -d)
+log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
+CLONE_OK=0
+if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
+    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
+echo -e "${BLUE}Krok 10: Test OLED${RESET}"
+
+if [ "$OLED_PRESENT" -eq 1 ]; then
+python3 <<'EOF'
+import time
+import board, busio
+from adafruit_ssd1306 import SSD1306_I2C
+from PIL import Image, ImageDraw, ImageFont
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
