@@ -225,52 +225,6 @@ else
     OLED_PRESENT=0
 fi
 pause_step
-    print("OLED not detected:", e)
-    exit(0)
-
-display.contrast(1)
-
-image = Image.new("1", (128, 64))
-draw = ImageDraw.Draw(image)
-font = ImageFont.load_default()
-
-text = "STREAMER"
-bbox = draw.textbbox((0, 0), text, font=font)
-w = bbox[2] - bbox[0]
-h = bbox[3] - bbox[1]
-
-draw.text(((128 - w) // 2, (64 - h) // 2), text, font=font, fill=255)
-
-display.image(image)
-display.show()
-
-time.sleep(2)
-
-display.fill(0)
-display.show()
-EOF
-    log "OLED test zakończony (niska jasność + wygaszenie)."
-else
-    log "OLED pominięty – brak urządzenia."
-fi
-
-pause_step
-
-echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
-
-TMP_DIR=$(mktemp -d)
-log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
-CLONE_OK=0
-if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
-    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
-echo -e "${BLUE}Krok 10: Test OLED${RESET}"
-
-if [ "$OLED_PRESENT" -eq 1 ]; then
-python3 <<'EOF'
-import time
-import board, busio
-from adafruit_ssd1306 import SSD1306_I2C
-from PIL import Image, ImageDraw, ImageFont
 
 echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
@@ -335,6 +289,22 @@ fi
 
 sudo systemctl daemon-reload
 pause_step
+
+echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
+
+TMP_DIR=$(mktemp -d)
+log "Pobieranie repozytorium: $REPO_GIT (branch: $REPO_BRANCH)"
+CLONE_OK=0
+if GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "$REPO_BRANCH" \
+    "$REPO_GIT" "$TMP_DIR" 2>&1 | tee -a "$LOGFILE"; then
+echo -e "${BLUE}Krok 10: Test OLED${RESET}"
+
+if [ "$OLED_PRESENT" -eq 1 ]; then
+python3 <<'EOF'
+import time
+import board, busio
+from adafruit_ssd1306 import SSD1306_I2C
+from PIL import Image, ImageDraw, ImageFont
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
