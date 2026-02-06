@@ -61,7 +61,7 @@ Projekt jest rozwijany z naciskiem na:
 ### Instalacja przez `curl`
 
 ```bash
-curl -sL https://raw.githubusercontent.com/aloisy/streamer/master/start_install.sh | bash
+curl -sL https://raw.githubusercontent.com/xtreamx2/streamer/main/start_install.sh | bash
 ```
 ```
 
