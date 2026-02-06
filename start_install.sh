@@ -48,7 +48,7 @@ pause_step() {
     if [ ! -t 0 ]; then
         return 0
     fi
-    read -p "ENTER = kontynuuj, q = przerwij: " choice
+    read -p "ENTER = kontynuuj, Ctrl + C / q = przerwij: " choice
     if [ "$choice" = "q" ]; then
         log "Instalacja przerwana przez użytkownika."
         exit 1
@@ -137,26 +137,26 @@ SPINNER_PID=$!
 log "Ekran instalacji uruchomiony (spinner OLED w tle)."
 
 echo -e "${BLUE}Krok 1: Aktualizacja systemu${RESET}"
+
+pause_step
 (sudo apt update && sudo apt upgrade -y) &
 spinner $!
 log "System zaktualizowany."
-pause_step
-
 spinner $!
 
 echo -e "${BLUE}Krok 2: Instalacja pakietów${RESET}"
+
 (sudo apt install -y git python3 python3-pip python3-venv python3-pil \
     mpd mpc alsa-utils i2c-tools jq curl wget unzip sox) &
 spinner $!
 log "Pakiety zainstalowane."
-pause_step
 
 echo -e "${BLUE}Krok 3: Instalacja bibliotek Python${RESET}"
+
 (pip3 install --break-system-packages --prefer-binary \
     python-mpd2 RPi.GPIO adafruit-circuitpython-ssd1306 requests) &
 spinner $!
 log "Biblioteki Python zainstalowane."
-pause_step
 
 echo -e "${BLUE}Krok 4: Synchronizacja config.txt${RESET}"
 
@@ -211,13 +211,11 @@ else
     log "I2C już aktywne (/dev/i2c-1 dostępne)."
 fi
 
-pause_step
-
 echo -e "${BLUE}Krok 5: Restart MPD${RESET}"
+
 sudo systemctl restart mpd
 mpc stop >/dev/null 2>&1
 log "MPD uruchomiony i zatrzymany."
-pause_step
 
 echo -e "${BLUE}Krok 6: Autodetekcja DAC${RESET}"
 if aplay -l | grep -qi "sndrpihifiberry"; then
@@ -225,7 +223,14 @@ if aplay -l | grep -qi "sndrpihifiberry"; then
 else
     log "Nie wykryto DAC!"
 fi
-pause_step
+
+# Stop spinner to free OLED before detection/test
+if [ -n "${SPINNER_PID:-}" ]; then
+    touch "$SPINNER_FLAG"
+    kill "$SPINNER_PID" >/dev/null 2>&1 || true
+    unset SPINNER_PID
+    sleep 0.3
+fi
 
 echo -e "${BLUE}Krok 7: Autodetekcja OLED${RESET}"
 # sprawdź adresy 0x3C lub 0x3D
@@ -235,14 +240,6 @@ if sudo i2cdetect -y 1 | grep -qiE "3[cd]"; then
 else
     log "OLED nie wykryty."
     OLED_PRESENT=0
-fi
-pause_step
-
-# Stop the spinner before running any python OLED test to avoid display contention
-if [ -n "${SPINNER_PID:-}" ]; then
-    touch "$SPINNER_FLAG"
-    kill "$SPINNER_PID" >/dev/null 2>&1 || true
-    unset SPINNER_PID
 fi
 
 # Jeśli wykryto OLED, wykonaj test (heredoc -> python)
@@ -270,7 +267,7 @@ display.contrast(1)
 font = ImageFont.load_default()
 image = Image.new("1", (128, 64))
 draw = ImageDraw.Draw(image)
-text = "STREAMER"
+text = "STREAMER - TEST"
 bbox = draw.textbbox((0, 0), text, font=font)
 w = bbox[2] - bbox[0]
 h = bbox[3] - bbox[1]
@@ -287,28 +284,38 @@ else
     log "OLED pominięty – brak urządzenia."
 fi
 
+# (opcjonalnie) wznowienie spinnera, jeśli chcesz by dalej pokazywał postęp:
+if [ -f "$SPINNER_SCRIPT" ] && [ -z "${SPINNER_PID:-}" ]; then
+    python3 "$SPINNER_SCRIPT" >/dev/null 2>&1 &
+    SPINNER_PID=$!
+    log "Spinner wznowiony."
+fi
+
 echo -e "${BLUE}Krok 8: Dodanie stacji radiowej${RESET}"
 
 RADIO_URL="http://stream.rcs.revma.com/ye5kghkgcm0uv"
 
-if mpc playlist | grep -q "$RADIO_URL"; then
+# Najpierw sprawdź czy URL istnieje już w obecnej kolejce lub w zapisanych playlistach
+if mpc playlist | grep -qF "$RADIO_URL" || mpc listall | grep -qF "$RADIO_URL"; then
     RADIO_NEW=0
     log "Stacja radiowa już istnieje."
 else
-    mpc clear
-    mpc add "$RADIO_URL"
-
+    # dodaj do bieżącej kolejki i zapisz jako playlistę 'radio' (ale NIE odtwarzaj od razu)
+    mpc add "$RADIO_URL" >/dev/null 2>&1 || log "Uwaga: nie udało się dodać URL do MPD"
     if ! mpc lsplaylists | grep -q "^radio$"; then
-        mpc save radio
+        mpc save radio >/dev/null 2>&1 || log "Uwaga: nie udało się zapisać playlisty 'radio'"
     fi
-
-    mpc volume 30
-    mpc play
     RADIO_NEW=1
-    log "Dodano i uruchomiono Radio 357."
-fi
+    log "Dodano stację Radio 357 (zapisano playlistę)."
 
-pause_step
+    # Jeśli MPD ma aktywne wyjścia, możemy ewentualnie ustawić głośność — nie uruchamiamy odtwarzania automatycznie
+    if mpc outputs | grep -qi "enabled"; then
+        mpc volume 30 >/dev/null 2>&1 || true
+        log "MPD ma aktywne wyjścia — gotowe do odtwarzania (nie włączam automatycznie)."
+    else
+        log "MPD ma wyłączone wyjścia — pomijam automatyczne odtwarzanie."
+    fi
+fi
 
 echo -e "${BLUE}Krok 9: Test DAC${RESET}"
 
@@ -322,7 +329,6 @@ sudo systemctl stop mpd
 
 aplay "$TEST_WAV" -D plughw:0,0
 log "Test DAC zakończony."
-pause_step
 
 echo -e "${BLUE}Krok 10: Test OLED${RESET}"
 
@@ -366,8 +372,6 @@ else
     log "OLED pominięty – brak urządzenia."
 fi
 
-pause_step
-
 echo -e "${BLUE}Krok 11: Pobieranie i aktualizacja projektu STREAMER${RESET}"
 
 TMP_DIR=$(mktemp -d)
@@ -408,7 +412,6 @@ rsync -av \
     "$TMP_DIR/" "$STREAMER_DIR/"
 
 log "Repozytorium zsynchronizowane."
-pause_step
 
 echo -e "${BLUE}Krok 12: Aktualizacja changelog${RESET}"
 
@@ -418,8 +421,6 @@ if [ -f "$CHANGELOG_SOURCE" ]; then
 else
     log "Brak pliku change_log w repozytorium."
 fi
-
-pause_step
 
 echo -e "${BLUE}Krok 13: Instalacja usług systemd${RESET}"
 
@@ -446,7 +447,6 @@ else
 fi
 
 sudo systemctl daemon-reload
-pause_step
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
@@ -462,23 +462,32 @@ elif [ "$SCRIPT_PATH" != "$TARGET_PATH" ]; then
     log "Instalator przeniesiony do $TARGET_PATH"
 fi
 
-pause_step
-
 echo -e "${BLUE}Krok 15: Przywracanie usług${RESET}"
+# Zatrzymaj spinner jeśli jeszcze działa
 if [ -n "${SPINNER_PID:-}" ]; then
     touch "$SPINNER_FLAG"
     kill "$SPINNER_PID" >/dev/null 2>&1 || true
 fi
+
+# Przywróć OLED - restart, ale bez ponownego kopiowania/enabling, reset failed jeśli potrzeba
 if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
-    sudo systemctl restart oled.service
-    log "Usługa OLED uruchomiona po instalacji."
-fi
-if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
-    sudo systemctl restart input.service
-    log "Usługa INPUT uruchomiona po instalacji."
+    sudo systemctl daemon-reload
+    sudo systemctl reset-failed oled.service >/dev/null 2>&1 || true
+    if sudo systemctl restart oled.service >/dev/null 2>&1; then
+        log "Usługa OLED uruchomiona po instalacji."
+    else
+        log "Uwaga: nie udało się uruchomić oled.service — sprawdź journalctl -xeu oled.service"
+    fi
 fi
 
-pause_step
+# Przywróć INPUT
+if [ -f "$STREAMER_DIR/systemd/input.service" ]; then
+    if sudo systemctl restart input.service >/dev/null 2>&1; then
+        log "Usługa INPUT uruchomiona po instalacji."
+    else
+        log "Uwaga: nie udało się uruchomić input.service"
+    fi
+fi
 
 mpc stop >/dev/null 2>&1
 
