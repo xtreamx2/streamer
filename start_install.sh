@@ -6,7 +6,7 @@ fi
 set -o pipefail
 clear
 
-SOFT_VERSION="0.08a1"
+SOFT_VERSION="0.08a1a"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -486,31 +486,31 @@ else
     log "Brak pliku change_log w repozytorium."
 fi
 
-echo -e "${BLUE}Krok 13: Instalacja usług systemd (VENV MODE)${RESET}"
+echo -e "${BLUE}Krok 13: Instalacja usług systemd (Naprawiony)${RESET}"
 
-# Ścieżka do pythona wewnątrz Twojego venv
+REAL_USER="${SUDO_USER:-$USER}"
 VENV_PYTHON="$STREAMER_DIR/venv/bin/python3"
 
 if [ -f "$STREAMER_DIR/systemd/oled.service" ]; then
-    # 1. Najpierw robimy kopię roboczą pliku usługi
-    cp "$STREAMER_DIR/systemd/oled.service" /tmp/oled.service
+    # Kopiujemy do systemd
+    sudo cp "$STREAMER_DIR/systemd/oled.service" /etc/systemd/system/oled.service
     
-    # 2. Podmieniamy ścieżkę do Pythona na tę z VENV
-    # Szukamy linii zaczynającej się od ExecStart i zmieniamy początek na ścieżkę do venv
-    sed -i "s|ExecStart=python3|ExecStart=$VENV_PYTHON|g" /tmp/oled.service
-    # Na wypadek gdyby w pliku była pełna ścieżka /usr/bin/python3:
-    sed -i "s|ExecStart=/usr/bin/python3|ExecStart=$VENV_PYTHON|g" /tmp/oled.service
+    # Naprawiamy uprawnienia i ścieżki bezpośrednio w pliku
+    sudo sed -i "s|^User=.*|User=$REAL_USER|" /etc/systemd/system/oled.service
+    sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$STREAMER_DIR|" /etc/systemd/system/oled.service
+    # Kluczowe: ustawienie ExecStart na Python z VENV
+    sudo sed -i "s|^ExecStart=.*|ExecStart=$VENV_PYTHON $STREAMER_DIR/oled/oled_daemon.py|" /etc/systemd/system/oled.service
 
-    # 3. Kopiujemy poprawiony plik do folderu systemowego
-    sudo cp /tmp/oled.service /etc/systemd/system/oled.service
-    
     sudo systemctl daemon-reload
     sudo systemctl enable oled.service
-    sudo systemctl restart oled.service
-    log "Usługa OLED zainstalowana z użyciem VENV."
+    if sudo systemctl restart oled.service; then
+        log "Usługa OLED uruchomiona pomyślnie."
+    else
+        log "Błąd: oled.service nie wstał. Sprawdź: journalctl -xeu oled.service"
+    fi
+else
+    log "Błąd: Nie znaleziono pliku $STREAMER_DIR/systemd/oled.service"
 fi
-
-sudo systemctl daemon-reload
 
 echo -e "${BLUE}Krok 14: Przenoszenie instalatora${RESET}"
 
