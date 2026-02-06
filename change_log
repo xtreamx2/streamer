@@ -1,5 +1,8 @@
 # Streamer Audio – CHANGE LOG
 
+## pre 0.08a1 – menu OLED
+- poprawa instalatora, menu i spinner całkowicie zespuł instalator
+
 ## pre 0.08a – menu OLED
 - dodano menu w ekranie OLED
 - dodano menu OLED z trybem ustawień jasności/wygaszania i obsługą long-press
