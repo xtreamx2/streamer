@@ -174,10 +174,10 @@ log "Pobieranie projektu..."
 bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/clone_repo.sh)
 
 log "Wykrywanie sprzętu..."
-detect_dac
-detect_oled
-detect_bt
-detect_wifi
+detect_dac || true
+detect_oled || true
+detect_bt || true
+detect_wifi || true
 
 log "Restart usług..."
 restart_service_if_exists "mpd.service"
