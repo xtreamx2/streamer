@@ -51,15 +51,22 @@ restart_service_if_exists() {
 }
 
 detect_dac() {
-    if aplay -l 2>/dev/null | grep -q "sndrpihifiberry"; then
-        log "[OK] Wykryto DAC PCM5122."
+    log "Wykrywanie sprzętu..."
+
+    if aplay -l 2>/dev/null | grep -qi "rpi-dac"; then
+        log "[OK] Wykryto DAC rpi-dac (I2S)."
         return 0
-    else
-        log "[!] BŁĄD: Nie wykryto DAC PCM5122!"
-        log "    - Sprawdź połączenia I2S"
-        log "    - Sprawdź overlay w /boot/config.txt"
-        return 1
     fi
+
+    if aplay -l 2>/dev/null | grep -qi "hifiberry"; then
+        log "[OK] Wykryto DAC Hifiberry / PCM5122."
+        return 0
+    fi
+
+    log "[!] BŁĄD: Nie wykryto żadnego DAC I2S!"
+    log "    - Sprawdź połączenia I2S"
+    log "    - Sprawdź overlay w /boot/firmware/config.txt"
+    return 1
 }
 
 detect_oled() {
