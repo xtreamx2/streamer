@@ -12,9 +12,18 @@ else
     echo "[configure_camilladsp] CamillaDSP nie znaleziony — instaluję najnowszą wersję."
 
     # ================================
-    # 1. Instalacja zależności
+    # 1. Instalacja rustup (Rust 1.82+)
     # ================================
-    sudo apt install -y build-essential cargo libasound2-dev libssl-dev pkg-config
+    if ! command -v rustup >/dev/null 2>&1; then
+        echo "[configure_camilladsp] Instaluję rustup (Rust 1.82+)..."
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+        source $HOME/.cargo/env
+    else
+        echo "[configure_camilladsp] rustup już zainstalowany."
+        source $HOME/.cargo/env
+    fi
+
+    rustup update stable
 
     # ================================
     # 2. Pobranie źródeł (tylko raz)
@@ -29,16 +38,11 @@ else
     fi
 
     # ================================
-    # 3. Kompilacja (tylko jeśli brak binarki)
+    # 3. Kompilacja
     # ================================
     cd /home/$USER/camilladsp
-
-    if [ ! -f "target/release/camilladsp" ]; then
-        echo "[configure_camilladsp] Kompiluję CamillaDSP..."
-        cargo build --release
-    else
-        echo "[configure_camilladsp] Binarka już istnieje — pomijam kompilację."
-    fi
+    echo "[configure_camilladsp] Kompiluję CamillaDSP..."
+    cargo build --release
 
     # ================================
     # 4. Instalacja binarki
