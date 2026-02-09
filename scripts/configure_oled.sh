@@ -39,7 +39,7 @@ echo "[configure_oled] [OK] Wykryto OLED na adresie 0x$ADDR."
 # ================================
 # 5. Zapis konfiguracji OLED
 # ================================
-mkdir -p /etc/streamer
+sudo mkdir -p /etc/streamer
 echo "oled_address=0x$ADDR" | sudo tee /etc/streamer/oled.conf >/dev/null
 
 echo "[configure_oled] OLED gotowy."
