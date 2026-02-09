@@ -7,4 +7,4 @@ python3 -m pip install --break-system-packages \
     RPi.GPIO \
     smbus2 \
     pillow \
-    mpd2
+    python-mpd2
