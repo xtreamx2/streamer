@@ -53,11 +53,13 @@ restart_service_if_exists() {
 detect_dac() {
     log "Wykrywanie sprzętu..."
 
+    # Wykrywanie prostych DAC-ów I2S (rpi-dac)
     if aplay -l 2>/dev/null | grep -qi "rpi-dac"; then
-        log "[OK] Wykryto DAC rpi-dac (I2S)."
+        log "[OK] Wykryto DAC I2S (rpi-dac)."
         return 0
     fi
 
+    # Wykrywanie DAC-ów z EEPROM (Hifiberry / PCM5122)
     if aplay -l 2>/dev/null | grep -qi "hifiberry"; then
         log "[OK] Wykryto DAC Hifiberry / PCM5122."
         return 0
