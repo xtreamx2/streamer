@@ -3,7 +3,8 @@ set -e
 
 echo "[configure_audio] Konfiguruję I2S + rpi-dac..."
 
-CONFIG="/boot/config.txt"
+# Bookworm używa nowej ścieżki:
+CONFIG="/boot/firmware/config.txt"
 
 # ================================
 # 1. Usuń stare wpisy DAC
