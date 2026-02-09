@@ -2,7 +2,7 @@
 Ten dokument opisuje plan rozwoju projektu w kolejnych etapach wersjonowania.
 Każda główna gałąź wersji ma jasno określony cel, zakres oraz oczekiwany poziom stabilności.
 
-v0.07a1 – aktualny etap
+v0.010a1 – aktualny etap
 Pierwsza faza implementacji funkcjonalności wejściowych.
 W tej wersji pojawia się obsługa enkodera (A/B/SW), integracja z MPD oraz stabilizacja OLED.
 
