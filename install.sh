@@ -152,7 +152,10 @@ bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/script
 log "Konfiguracja audio (I2S)..."
 bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_audio.sh)
 
-log "Konfiguracja I2C + OLED..."
+log "Konfiguracja I2C..."
+bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_i2c.sh)
+
+log "Konfiguracja OLED..."
 bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_oled.sh)
 
 log "Konfiguracja MPD..."
