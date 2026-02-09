@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Streamer Audio – Raspberry Pi I2S DAC + OLED
 
 Streamer Audio to otwarto‑źródłowy projekt odtwarzacza audio opartego na Raspberry Pi, z obsługą:
@@ -67,17 +66,28 @@ chmod +x install.sh
 ./install.sh
 
 
-streamer/
- ├── config/
- │    └── gpio.json
- ├── logs/
- │    └── install.log
- ├── media/
- │    └── test.wav
- ├── installer/
- │    └── start_install.sh
- ├── change_log
- └── README.md
+/streamer
+│
+├── main.py              # główny loop
+├── config.py            # ustawienia
+│
+├── audio/
+│   ├── player.py        # MPD/Spotify/BT/Radio
+│   ├── dsp.py           # EQ, loudness, filtry (CamillaDSP/ALSA)
+│   └── volume.py        # głośność (PCM5122 + soft)
+│
+├── ui/
+│   ├── display.py       # OLED
+│   ├── menu.py          # logika menu
+│   └── encoder.py       # enkoder + przyciski
+│
+├── hardware/
+│   ├── relays.py        # przekaźniki/tyrystory
+│   ├── rtc.py           # DS3231 (później)
+│   └── power.py         # standby, mute, itp.
+│
+└── utils/
+└── logger.py        # logi
 
 
 Projekt składa się z trzech warstw licencyjnych:
@@ -119,7 +129,7 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://gitlab.com/aloisy/streamer.git
+git remote add origin https://raw.githubusercontent.com/xtreamx2/streamer/Second/install.sh
 git branch -M main
 git push -uf origin main
 ```
