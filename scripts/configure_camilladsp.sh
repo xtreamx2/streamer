@@ -4,26 +4,50 @@ set -e
 echo "[configure_camilladsp] Instaluję i konfiguruję CamillaDSP..."
 
 # ================================
-# 1. Pobranie CamillaDSP
+# 0. Sprawdzenie czy już jest
 # ================================
-LATEST_URL=$(curl -s https://api.github.com/repos/HEnquist/camilladsp/releases/latest \
-    | grep browser_download_url \
-    | grep -E 'arm64.*\.deb' \
-    | cut -d '"' -f 4 | head -n 1)
+if command -v camilladsp >/dev/null 2>&1; then
+    echo "[configure_camilladsp] CamillaDSP już jest zainstalowany — pomijam instalację."
+else
+    echo "[configure_camilladsp] CamillaDSP nie znaleziony — instaluję najnowszą wersję."
 
-if [ -z "$LATEST_URL" ]; then
-    echo "[configure_camilladsp] Błąd: nie znaleziono pakietu ARM64 w najnowszym release!"
-    exit 1
+    # ================================
+    # 1. Instalacja zależności
+    # ================================
+    sudo apt install -y build-essential cargo libasound2-dev libssl-dev pkg-config
+
+    # ================================
+    # 2. Pobranie źródeł (tylko raz)
+    # ================================
+    if [ ! -d "/home/$USER/camilladsp" ]; then
+        echo "[configure_camilladsp] Pobieram repozytorium..."
+        git clone https://github.com/HEnquist/camilladsp /home/$USER/camilladsp
+    else
+        echo "[configure_camilladsp] Repozytorium już istnieje — aktualizuję."
+        cd /home/$USER/camilladsp
+        git pull
+    fi
+
+    # ================================
+    # 3. Kompilacja (tylko jeśli brak binarki)
+    # ================================
+    cd /home/$USER/camilladsp
+
+    if [ ! -f "target/release/camilladsp" ]; then
+        echo "[configure_camilladsp] Kompiluję CamillaDSP..."
+        cargo build --release
+    else
+        echo "[configure_camilladsp] Binarka już istnieje — pomijam kompilację."
+    fi
+
+    # ================================
+    # 4. Instalacja binarki
+    # ================================
+    sudo cp target/release/camilladsp /usr/bin/
 fi
 
-echo "[configure_camilladsp] Pobieram: $LATEST_URL"
-wget -q "$LATEST_URL" -O /tmp/camilladsp.deb
-
-sudo apt install -y /tmp/camilladsp.deb
-rm /tmp/camilladsp.deb
-
 # ================================
-# 2. Katalog konfiguracyjny
+# 5. Katalog konfiguracyjny
 # ================================
 sudo mkdir -p /etc/camilladsp
 
@@ -35,7 +59,7 @@ pipeline:
 EOF
 
 # ================================
-# 3. Usługa systemd
+# 6. Usługa systemd
 # ================================
 cat <<EOF | sudo tee /etc/systemd/system/camilladsp.service
 [Unit]
