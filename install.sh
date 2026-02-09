@@ -6,7 +6,7 @@ set -e
 ###############################################
 
 # --- Logger ---
-ENABLE_LOGGER=1   # 1 = logger aktywny, 0 = logger wyłączony
+ENABLE_LOGGER=1
 LOGFILE="/home/$USER/streamer_install.log"
 
 log() {
@@ -53,13 +53,11 @@ restart_service_if_exists() {
 detect_dac() {
     log "Wykrywanie sprzętu..."
 
-    # Wykrywanie prostych DAC-ów I2S (rpi-dac)
     if aplay -l 2>/dev/null | grep -qi "rpi-dac"; then
         log "[OK] Wykryto DAC I2S (rpi-dac)."
         return 0
     fi
 
-    # Wykrywanie DAC-ów z EEPROM (Hifiberry / PCM5122)
     if aplay -l 2>/dev/null | grep -qi "hifiberry"; then
         log "[OK] Wykryto DAC Hifiberry / PCM5122."
         return 0
@@ -72,6 +70,11 @@ detect_dac() {
 }
 
 detect_oled() {
+    if [ ! -e /dev/i2c-1 ]; then
+        log "[-] I2C nieaktywne — OLED nie może być wykryty."
+        return 1
+    fi
+
     if i2cdetect -y 1 | grep -q "3c"; then
         log "[OK] Wykryto OLED (0x3C)."
         return 0
@@ -120,12 +123,9 @@ if [ "$MODE" = "2" ]; then
     log "Wykrywanie sprzętu..."
     detect_dac
     detect_oled
-#    detect_bt
-#    detect_wifi
 
     log "Restart usług..."
     restart_service_if_exists "mpd.service"
-#    restart_service_if_exists "bluealsa.service"
     restart_service_if_exists "camilladsp.service"
     restart_service_if_exists "oled.service"
 
@@ -149,10 +149,10 @@ fi
 log "Instalacja pakietów..."
 bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/install_packages.sh)
 
-log "Konfiguracja audio..."
+log "Konfiguracja audio (I2S)..."
 bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_audio.sh)
 
-log "Konfiguracja I2C..."
+log "Konfiguracja I2C + OLED..."
 bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_oled.sh)
 
 log "Konfiguracja MPD..."
