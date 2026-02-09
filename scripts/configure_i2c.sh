@@ -17,3 +17,11 @@ echo "[configure_i2c] Ustawiono:"
 echo "  dtparam=i2c_arm=on"
 echo "  dtoverlay=i2c1,pins_2_3"
 echo "[configure_i2c] Restart wymagany, aby I2C zostało aktywowane."
+
+# Załaduj moduły I2C teraz
+sudo modprobe i2c-bcm2835 || true
+sudo modprobe i2c-dev || true
+
+# Upewnij się, że ładują się przy starcie
+echo "i2c-bcm2835" | sudo tee /etc/modules-load.d/i2c.conf >/dev/null
+echo "i2c-dev"     | sudo tee -a /etc/modules-load.d/i2c.conf >/dev/null
