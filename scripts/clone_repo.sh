@@ -3,10 +3,18 @@ set -e
 
 echo "[clone_repo] Pobieram projekt z GitHub..."
 
-cd /home/$USER
+REPO_URL="https://github.com/xtreamx2/streamer.git"
+TARGET_DIR="/home/$USER/streamer"
+BRANCH="Second"
 
-if [ -d "streamer" ]; then
-    echo "[clone_repo] Katalog streamer już istnieje — pomijam klonowanie."
+# Jeśli repo istnieje → aktualizacja
+if [ -d "$TARGET_DIR/.git" ]; then
+    echo "[clone_repo] Repozytorium już istnieje — aktualizuję."
+    cd "$TARGET_DIR"
+    git fetch
+    git checkout "$BRANCH"
+    git pull
 else
-    git clone https://github.com/<repo>/streamer.git
+    echo "[clone_repo] Klonuję repozytorium (gałąź: $BRANCH)..."
+    git clone -b "$BRANCH" "$REPO_URL" "$TARGET_DIR"
 fi
