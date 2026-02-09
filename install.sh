@@ -111,12 +111,12 @@ if [ "$MODE" = "2" ]; then
     log "Wykrywanie sprzętu..."
     detect_dac
     detect_oled
-    detect_bt
-    detect_wifi
+#    detect_bt
+#    detect_wifi
 
     log "Restart usług..."
     restart_service_if_exists "mpd.service"
-    restart_service_if_exists "bluealsa.service"
+#    restart_service_if_exists "bluealsa.service"
     restart_service_if_exists "camilladsp.service"
     restart_service_if_exists "oled.service"
 
