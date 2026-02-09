@@ -8,8 +8,13 @@ echo "[configure_camilladsp] Instaluję i konfiguruję CamillaDSP..."
 # ================================
 LATEST_URL=$(curl -s https://api.github.com/repos/HEnquist/camilladsp/releases/latest \
     | grep browser_download_url \
-    | grep arm64.deb \
-    | cut -d '"' -f 4)
+    | grep -E 'arm64.*\.deb' \
+    | cut -d '"' -f 4 | head -n 1)
+
+if [ -z "$LATEST_URL" ]; then
+    echo "[configure_camilladsp] Błąd: nie znaleziono pakietu ARM64 w najnowszym release!"
+    exit 1
+fi
 
 echo "[configure_camilladsp] Pobieram: $LATEST_URL"
 wget -q "$LATEST_URL" -O /tmp/camilladsp.deb
@@ -40,7 +45,7 @@ After=sound.target
 [Service]
 ExecStart=/usr/bin/camilladsp -p /etc/camilladsp/config.yml
 Restart=always
-User=pi
+User=$USER
 
 [Install]
 WantedBy=multi-user.target
