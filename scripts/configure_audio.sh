@@ -1,10 +1,20 @@
 #!/bin/bash
 set -e
 
-echo "[configure_audio] Konfiguruję I2S + PCM5122..."
+echo "[configure_audio] Konfiguruję I2S + rpi-dac..."
 
-sudo sed -i '/dtparam=i2s=on/d' /boot/config.txt
-sudo sed -i '/dtoverlay=hifiberry-dacplus/d' /boot/config.txt
+CONFIG="/boot/config.txt"
 
-echo "dtparam=i2s=on" | sudo tee -a /boot/config.txt
-echo "dtoverlay=hifiberry-dacplus" | sudo tee -a /boot/config.txt
+# Usuń stare overlaye DAC
+sudo sed -i '/dtoverlay=hifiberry-dacplus/d' "$CONFIG"
+sudo sed -i '/dtoverlay=rpi-dac/d' "$CONFIG"
+sudo sed -i '/dtparam=i2s=on/d' "$CONFIG"
+
+# Dodaj nowe wpisy
+echo "dtoverlay=rpi-dac" | sudo tee -a "$CONFIG" >/dev/null
+echo "dtparam=i2s=on" | sudo tee -a "$CONFIG" >/dev/null
+
+echo "[configure_audio] Ustawiono:"
+echo "  dtoverlay=rpi-dac"
+echo "  dtparam=i2s=on"
+echo "[configure_audio] Restart wymagany, aby DAC został wykryty."
