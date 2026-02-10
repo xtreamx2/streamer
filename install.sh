@@ -191,9 +191,9 @@ After=network.target syslog.target dev-i2c-1.device
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/'"$USER_NAME"'/streamer/oled/oled.py
+ExecStart=/usr/bin/python3 /home/"$USER_NAME"/streamer/oled/oled.py
 Restart=always
-User='"$USER_NAME"'
+User="$USER_NAME"
 
 [Install]
 WantedBy=multi-user.target
