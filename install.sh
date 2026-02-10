@@ -4,19 +4,50 @@
 
 set -euo pipefail
 
-LOG_FILE="/var/log/streamer_install.log"
+# ---------- konfiguracja logów ----------
+
+DEBUG_LOG=1   # 1 = zapisuj debug do install.log, 0 = tylko streamer_install.log
+
+LOG_FILE="$HOME/streamer_install.log"
+DEBUG_FILE="$HOME/install.log"
+
+touch "$LOG_FILE"
+if [[ "$DEBUG_LOG" == "1" ]]; then
+    touch "$DEBUG_FILE"
+fi
+
+# ---------- kolory ----------
+
+GREEN="\e[32m"
+RED="\e[31m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+RESET="\e[0m"
 
 log() {
-    local msg="$*"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | $msg"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') | $msg" >> "$LOG_FILE"
+    local msg="$1"
+    local type="${2:-INFO}"
+
+    case "$type" in
+        OK)   prefix="${GREEN}[OK]${RESET}" ;;
+        ERR)  prefix="${RED}[ERROR]${RESET}" ;;
+        WARN) prefix="${YELLOW}[-]${RESET}" ;;
+        *)    prefix="${BLUE}[..]${RESET}" ;;
+    esac
+
+    echo -e "$prefix $msg"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | $prefix $msg" >> "$LOG_FILE"
+
+    if [[ "$DEBUG_LOG" == "1" ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') | $msg" >> "$DEBUG_FILE"
+    fi
 }
 
 run_safe() {
     local cmd="$*"
-    log "[..] $cmd"
+    log "$cmd" "INFO"
     if ! bash -c "$cmd"; then
-        log "[!] Błąd: $cmd"
+        log "Błąd: $cmd" "ERR"
         return 1
     fi
     return 0
@@ -26,23 +57,23 @@ restart_service_if_exists() {
     local svc="$1"
 
     if ! systemctl list-unit-files --type=service | awk '{print $1}' | grep -qx "$svc"; then
-        log "[-] $svc: brak jednostki, pomijam."
+        log "[$svc] brak jednostki, pomijam." "WARN"
         return 0
     fi
 
     if systemctl is-active --quiet "$svc"; then
-        log "[..] Restartuję $svc"
+        log "[$svc] restartuję..." "INFO"
         if ! sudo systemctl restart "$svc"; then
-            log "[!] Nie udało się zrestartować $svc"
+            log "[$svc] nie udało się zrestartować" "ERR"
         else
-            log "[OK] Zrestartowano $svc"
+            log "[$svc] zrestartowano" "OK"
         fi
     else
-        log "[..] Włączam i uruchamiam $svc"
+        log "[$svc] włączam i uruchamiam..." "INFO"
         if ! sudo systemctl enable --now "$svc"; then
-            log "[!] Nie udało się włączyć/uruchomić $svc"
+            log "[$svc] nie udało się włączyć/uruchomić" "ERR"
         else
-            log "[OK] $svc włączona i uruchomiona"
+            log "[$svc] włączona i uruchomiona" "OK"
         fi
     fi
 }
@@ -53,30 +84,30 @@ ensure_git_clone() {
     local dest="$3"
 
     if [ -d "$dest/.git" ]; then
-        log "[clone_repo] Sprawdzam repozytorium w $dest..."
+        log "[clone_repo] sprawdzam repozytorium w $dest..." "INFO"
         if ! (cd "$dest" && git fsck --full >/dev/null 2>&1); then
-            log "[clone_repo] (!) Repozytorium uszkodzone. Usuwam i klonuję ponownie."
+            log "[clone_repo] repozytorium uszkodzone, usuwam i klonuję ponownie" "WARN"
             rm -rf "$dest"
         else
-            log "[clone_repo] Repozytorium OK. Aktualizuję..."
+            log "[clone_repo] repozytorium OK, aktualizuję..." "INFO"
             if ! (cd "$dest" && git fetch --all --prune && git reset --hard "origin/$branch"); then
-                log "[clone_repo] (!) Aktualizacja nie powiodła się. Usuwam i klonuję ponownie."
+                log "[clone_repo] aktualizacja nie powiodła się, usuwam i klonuję ponownie" "WARN"
                 rm -rf "$dest"
             fi
         fi
     fi
 
     if [ ! -d "$dest" ]; then
-        log "[clone_repo] Klonuję $repo_url (branch: $branch) do $dest..."
+        log "[clone_repo] klonuję $repo_url (branch: $branch) do $dest..." "INFO"
         git clone --depth 1 --branch "$branch" "$repo_url" "$dest"
-        log "[clone_repo] [OK] Repozytorium pobrane."
+        log "[clone_repo] repozytorium pobrane" "OK"
     else
-        log "[clone_repo] [OK] Repozytorium już istnieje i zostało zaktualizowane."
+        log "[clone_repo] repozytorium istnieje i zostało zaktualizowane" "OK"
     fi
 }
 
 install_python_deps() {
-    log "[install_python] Instaluję biblioteki Python..."
+    log "[install_python] instaluję biblioteki Python..." "INFO"
 
     sudo apt update
     sudo apt install -y python3-pip python3-venv build-essential libjpeg-dev zlib1g-dev
@@ -90,7 +121,7 @@ install_python_deps() {
         python-mpd2 \
         luma.oled
 
-    log "[install_python] [OK] Biblioteki Python zainstalowane."
+    log "[install_python] biblioteki Python zainstalowane" "OK"
 }
 
 install_oled_service() {
@@ -100,11 +131,11 @@ install_oled_service() {
     local oled_script="$repo_dir/oled/oled.py"
 
     if [ ! -f "$oled_script" ]; then
-        log "[oled] [-] Brak skryptu OLED ($oled_script) — pomijam instalację usługi."
+        log "[oled] brak skryptu ($oled_script) — pomijam usługę" "WARN"
         return 0
     fi
 
-    log "[oled] Tworzę usługę systemd..."
+    log "[oled] tworzę usługę systemd..." "INFO"
 
     sudo tee /etc/systemd/system/oled.service >/dev/null <<EOF
 [Unit]
@@ -122,31 +153,31 @@ User=$user_name
 WantedBy=multi-user.target
 EOF
 
-    log "[oled] [OK] Plik usługi OLED utworzony."
+    log "[oled] plik usługi utworzony" "OK"
 }
 
 run_config_scripts() {
-    log "[configure_audio] Konfiguracja audio (I2S)..."
+    log "[configure_audio] konfiguracja audio (I2S)..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_audio.sh)"
 
-    log "[configure_i2c] Konfiguracja I2C..."
+    log "[configure_i2c] konfiguracja I2C..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_i2c.sh)"
 
-    log "[configure_oled] Konfiguracja OLED..."
+    log "[configure_oled] konfiguracja OLED..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_oled.sh)"
 
-    log "[configure_mpd] Konfiguracja MPD..."
+    log "[configure_mpd] konfiguracja MPD..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_mpd.sh)"
 
-    log "[configure_bt] Konfiguracja Bluetooth..."
+    log "[configure_bt] konfiguracja Bluetooth..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_bt.sh)"
 
-    log "[configure_camilladsp] Konfiguracja CamillaDSP..."
+    log "[configure_camilladsp] konfiguracja CamillaDSP..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_camilladsp.sh)"
 }
 
 restart_all_services() {
-    log "[services] Przeładowanie systemd..."
+    log "[services] przeładowanie systemd..." "INFO"
     sudo systemctl daemon-reload
 
     local services=(
@@ -161,9 +192,9 @@ restart_all_services() {
     done
 }
 
-# ---------------- main ----------------
+# ---------- main ----------
 
-log "=== streamer install/update (branch Second) ==="
+log "=== streamer install/update (branch Second) ===" "INFO"
 
 USER_NAME="$(whoami)"
 HOME_DIR="$(eval echo ~"$USER_NAME")"
@@ -177,52 +208,47 @@ echo "2) Aktualizacja (update only)"
 read -r -p "Wybierz [1/2]: " MODE
 
 if [[ "$MODE" == "1" ]]; then
-    log "[mode] TRYB: INSTALACJA"
+    log "[mode] TRYB: INSTALACJA" "INFO"
 
     read -r -p "Czy zaktualizować system (apt update/upgrade)? [y/N]: " UPD
     if [[ "$UPD" =~ ^[Yy]$ ]]; then
-        log "[system] Aktualizacja systemu..."
+        log "[system] aktualizacja systemu..." "INFO"
         run_safe "sudo apt update && sudo apt upgrade -y"
     fi
 
-    log "[install_packages] Instalacja pakietów systemowych..."
+    log "[install_packages] instalacja pakietów systemowych..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/install_packages.sh)"
 
     install_python_deps
 
     run_config_scripts
 
-    log "[clone_repo] Pobieranie / aktualizacja repozytorium..."
+    log "[clone_repo] pobieranie / aktualizacja repozytorium..." "INFO"
     ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"
 
     install_oled_service "$USER_NAME" "$DEST_DIR"
 
     restart_all_services
 
-    log "=============================================="
-    log " [OK] INSTALACJA ZAKOŃCZONA."
-    log " Jeśli zmieniano dtoverlay/dtparam, wykonaj reboot."
-    log " Log: $LOG_FILE"
-    log "=============================================="
+    log "INSTALACJA ZAKOŃCZONA. Jeśli zmieniano dtoverlay/dtparam, wykonaj reboot." "OK"
+    log "Logi: $LOG_FILE (normal), $DEBUG_FILE (debug, DEBUG_LOG=$DEBUG_LOG)" "INFO"
     exit 0
 
 elif [[ "$MODE" == "2" ]]; then
-    log "[mode] TRYB: AKTUALIZACJA"
+    log "[mode] TRYB: AKTUALIZACJA" "INFO"
 
-    log "[clone_repo] Pobieranie / aktualizacja repozytorium..."
+    log "[clone_repo] pobieranie / aktualizacja repozytorium..." "INFO"
     ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"
 
     install_oled_service "$USER_NAME" "$DEST_DIR"
 
     restart_all_services
 
-    log "=============================================="
-    log " [OK] AKTUALIZACJA ZAKOŃCZONA."
-    log " Log: $LOG_FILE"
-    log "=============================================="
+    log "AKTUALIZACJA ZAKOŃCZONA." "OK"
+    log "Logi: $LOG_FILE (normal), $DEBUG_FILE (debug, DEBUG_LOG=$DEBUG_LOG)" "INFO"
     exit 0
 
 else
-    log "[mode] Nieprawidłowy wybór trybu: $MODE"
+    log "[mode] nieprawidłowy wybór trybu: $MODE" "ERR"
     exit 1
 fi
