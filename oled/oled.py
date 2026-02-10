@@ -514,4 +514,34 @@ def main():
                 draw.rectangle((0, 0, device.width, device.height), outline=0, fill=0)
             time.sleep(0.1)
             continue
-        elif inactive
+        elif inactive > settings.screensaver_dim_after:
+            # soft dimming (10%)
+            try:
+                device.contrast(int(255 * (settings.screensaver_dim_level / 100.0)))
+            except Exception:
+                pass
+        else:
+            # jasność domyślna
+            try:
+                device.contrast(int(255 * (settings.brightness_default / 100.0)))
+            except Exception:
+                pass
+
+        # timeout menu
+        if state.mode == "menu" and inactive > MENU_TIMEOUT:
+            state.mode = "main"
+
+        # rysowanie ekranu
+        if state.mode == "main":
+            draw_main_screen(device, np, state)
+        else:
+            draw_menu(device, state)
+
+        time.sleep(1.0 / FPS)
+
+    enc.stop()
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
