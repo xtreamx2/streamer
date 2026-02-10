@@ -22,6 +22,22 @@ run_safe() {
   return 0
 }
 
+echo "Wybierz tryb:"
+echo "1) Instalacja (fresh)"
+echo "2) Aktualizacja (update only)"
+read -p "Wybierz [1/2]: " MODE
+
+if [[ "$MODE" == "1" ]]; then
+  # pełna instalacja: pakiety, konfiguracje, klon repo, usługi
+elif [[ "$MODE" == "2" ]]; then
+  # tylko aktualizacja repo i restart usług (bez ponownej konfiguracji systemu)
+  ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"
+  sudo systemctl daemon-reload
+  for s in "${SERVICES_TO_CHECK[@]}"; do restart_service_if_exists "$s"; done
+  exit 0
+fi
+
+
 # Restart or enable service only if unit file exists
 restart_service_if_exists() {
   local svc="$1"
