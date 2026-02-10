@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect
 from mpd import MPDClient
 import json
+import requests
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -8,6 +9,10 @@ CONFIG_DIR = BASE_DIR.parent / "config"
 CONFIG_RADIO = CONFIG_DIR / "config-radio.json"
 
 app = Flask(__name__)
+
+# ------------------------------
+# Helpers
+# ------------------------------
 
 def load_stations():
     if not CONFIG_RADIO.exists():
@@ -25,11 +30,33 @@ def mpd_client():
     except:
         return None
 
+# ------------------------------
+# M3U resolver
+# ------------------------------
+
+def resolve_m3u(url):
+    if not url.lower().endswith(".m3u"):
+        return url
+    try:
+        r = requests.get(url, timeout=5)
+        for line in r.text.splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                return line
+    except:
+        pass
+    return url
+
+# ------------------------------
+# Routes
+# ------------------------------
+
 @app.route("/")
 def index():
     data = load_stations()
     client = mpd_client()
     status = {}
+
     if client:
         try:
             status = client.status()
@@ -37,12 +64,14 @@ def index():
             status["title"] = song.get("title", "")
         except:
             pass
+
     return render_template("index.html", stations=data["stations"], status=status)
 
 @app.route("/play/<name>")
 def play(name):
     data = load_stations()
     client = mpd_client()
+
     if client:
         for s in data["stations"]:
             if s["name"] == name:
@@ -53,6 +82,7 @@ def play(name):
                 except:
                     pass
                 break
+
     return redirect("/")
 
 @app.route("/stop")
@@ -72,7 +102,7 @@ def edit(name):
 
     if request.method == "POST":
         station["name"] = request.form["name"]
-        station["url"] = request.form["url"]
+        station["url"] = resolve_m3u(request.form["url"])
         station["favorite"] = ("favorite" in request.form)
         save_stations(data)
         return redirect("/")
@@ -92,13 +122,17 @@ def add():
         data = load_stations()
         data["stations"].append({
             "name": request.form["name"],
-            "url": request.form["url"],
+            "url": resolve_m3u(request.form["url"]),
             "favorite": ("favorite" in request.form),
             "tags": []
         })
         save_stations(data)
         return redirect("/")
     return render_template("edit.html", station=None)
+
+# ------------------------------
+# Run
+# ------------------------------
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
