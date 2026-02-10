@@ -1,52 +1,35 @@
 #!/usr/bin/env bash
-# Robust installer for streamer (branch: Second)
-# - single daemon-reload and grouped restarts
-# - tolerant to missing hardware
-# - auto-fix corrupt git by recloning
-# - create oled.service only if oled.py exists
-# - safe logging and non-fatal checks
 
-# -----------------------
-# Helpers
-# -----------------------
+# ============================================
+#  streamer - installer / updater (branch Second)
+#  tryb 1: pełna instalacja
+#  tryb 2: aktualizacja (update only)
+# ============================================
+
+set -euo pipefail
+
+# ---------- helpers ----------
+
 log() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') | $*"
 }
 
-# Run a command but don't exit script on failure; log result
 run_safe() {
   if ! bash -c "$*"; then
-    log "(!) Command failed: $*"
+    log "(!) Command failed (kontynuuję): $*"
     return 1
   fi
   return 0
 }
 
-echo "Wybierz tryb:"
-echo "1) Instalacja (fresh)"
-echo "2) Aktualizacja (update only)"
-read -p "Wybierz [1/2]: " MODE
-
-if [[ "$MODE" == "1" ]]; then
-  # pełna instalacja: pakiety, konfiguracje, klon repo, usługi
-elif [[ "$MODE" == "2" ]]; then
-  # tylko aktualizacja repo i restart usług (bez ponownej konfiguracji systemu)
-  ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"
-  sudo systemctl daemon-reload
-  for s in "${SERVICES_TO_CHECK[@]}"; do restart_service_if_exists "$s"; done
-  exit 0
-fi
-
-
-# Restart or enable service only if unit file exists
 restart_service_if_exists() {
   local svc="$1"
+
   if ! systemctl list-unit-files --type=service | awk '{print $1}' | grep -qx "$svc"; then
     log "[-] $svc: brak jednostki, pomijam."
     return 0
   fi
 
-  # If active -> restart, else enable+start
   if systemctl is-active --quiet "$svc"; then
     log "[..] Restartuję $svc"
     sudo systemctl restart "$svc" || log "(!) Nie udało się zrestartować $svc"
@@ -56,19 +39,6 @@ restart_service_if_exists() {
   fi
 }
 
-# Detect functions should never abort installation
-detect_safe() {
-  local name="$1"; shift
-  if ! "$@"; then
-    log "[-] Detekcja $name: brak lub błąd — pomijam."
-    return 1
-  else
-    log "[OK] Detekcja $name: OK."
-    return 0
-  fi
-}
-
-# Ensure git clone is healthy; if corrupt -> remove and reclone
 ensure_git_clone() {
   local repo_url="$1"
   local branch="$2"
@@ -90,78 +60,41 @@ ensure_git_clone() {
 
   if [ ! -d "$dest" ]; then
     log "Klonuję repozytorium $repo_url (branch: $branch) do $dest..."
-    if ! git clone --depth 1 --branch "$branch" "$repo_url" "$dest"; then
-      log "(!) Klonowanie nie powiodło się."
-      return 1
-    fi
+    git clone --depth 1 --branch "$branch" "$repo_url" "$dest"
   fi
-  return 0
 }
 
-# -----------------------
-# Start instalacji
-# -----------------------
-log "=== Uruchomiono instalator ==="
+install_python_deps() {
+  log "[PY] Instaluję zależności Python..."
 
-# Użytkownik wykonujący instalację (używamy literalnej nazwy w plikach systemd)
-USER_NAME="$(whoami)"
-HOME_DIR="$(eval echo ~"$USER_NAME")"
-REPO_URL="https://github.com/xtreamx2/streamer"
-BRANCH="Second"
-DEST_DIR="$HOME_DIR/streamer"
+  sudo apt update
+  sudo apt install -y python3-pip python3-venv build-essential libjpeg-dev zlib1g-dev
 
-# Opcjonalna aktualizacja systemu
-read -p "Czy zaktualizować system? [y/N]: " UPD
-if [[ "$UPD" =~ ^[Yy]$ ]]; then
-  log "Aktualizacja systemu..."
-  sudo apt update && sudo apt upgrade -y || log "(!) Aktualizacja systemu nie powiodła się."
-fi
+  sudo -H python3 -m pip install --upgrade pip setuptools wheel
 
-# Instalacja pakietów (podskrypt)
-log "Instalacja pakietów..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/install_packages.sh)"
+  sudo -H python3 -m pip install --break-system-packages \
+    RPi.GPIO \
+    smbus2 \
+    pillow \
+    python-mpd2 \
+    luma.oled
 
-# Konfiguracje (uruchamiamy podskrypty, ale nie pozwalamy im restartować globalnie)
-log "Konfiguracja audio (I2S)..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_audio.sh)"
+  log "[PY] Zależności Python gotowe."
+}
 
-log "Konfiguracja I2C..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_i2c.sh)"
+install_oled_service() {
+  local user_name="$1"
+  local repo_dir="$2"
 
-log "Konfiguracja OLED..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_oled.sh)"
+  local oled_script="$repo_dir/oled/oled.py"
 
-log "Konfiguracja MPD..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_mpd.sh)"
+  if [ ! -f "$oled_script" ]; then
+    log "[-] Brak skryptu OLED ($oled_script) — pomijam instalację usługi OLED."
+    return 0
+  fi
 
-log "Konfiguracja Bluetooth..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_bt.sh)"
+  log "[OLED] Tworzę usługę systemd..."
 
-log "Konfiguracja CamillaDSP..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_camilladsp.sh)"
-
-log "Instalacja Python..."
-run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/install_python.sh)"
-
-# Pobierz/aktualizuj repo (bez przerywania instalacji)
-log "Pobieranie projektu..."
-if ! ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"; then
-  log "(!) Nie udało się pobrać repozytorium. Kontynuuję, ale niektóre funkcje mogą być niedostępne."
-fi
-
-# Wykrywanie sprzętu (detekcje nie przerywają instalacji)
-log "Wykrywanie sprzętu..."
-detect_safe "DAC" bash -c 'lsmod | grep -qi snd_soc || true'
-detect_safe "OLED" bash -c 'i2cdetect -y 1 >/dev/null 2>&1 || true'
-detect_safe "Bluetooth" bash -c 'lsusb | grep -qi Bluetooth || true'
-detect_safe "WiFi" bash -c 'ip link show wlan0 >/dev/null 2>&1 || true'
-
-# -----------------------
-# Instalacja usługi OLED (tylko jeśli skrypt istnieje w repo)
-# -----------------------
-OLED_SCRIPT="$DEST_DIR/oled/oled.py"
-if [ -f "$OLED_SCRIPT" ]; then
-  log "Instalacja usługi OLED..."
   sudo tee /etc/systemd/system/oled.service >/dev/null <<EOF
 [Unit]
 Description=OLED Display Service
@@ -169,37 +102,113 @@ After=network.target syslog.target dev-i2c-1.device
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 $OLED_SCRIPT
+ExecStart=/usr/bin/python3 $oled_script
 Restart=always
-User=$USER_NAME
+RestartSec=2
+User=$user_name
 
 [Install]
 WantedBy=multi-user.target
 EOF
-  log "[OK] Plik usługi OLED utworzony."
+
+  log "[OLED] Plik usługi utworzony."
+}
+
+run_config_scripts() {
+  log "Konfiguracja audio (I2S)..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_audio.sh)"
+
+  log "Konfiguracja I2C..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_i2c.sh)"
+
+  log "Konfiguracja OLED..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_oled.sh)"
+
+  log "Konfiguracja MPD..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_mpd.sh)"
+
+  log "Konfiguracja Bluetooth..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_bt.sh)"
+
+  log "Konfiguracja CamillaDSP..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_camilladsp.sh)"
+}
+
+restart_all_services() {
+  log "Przeładowanie systemd i zbiorczy restart usług..."
+  sudo systemctl daemon-reload
+
+  local services=(
+    "mpd.service"
+    "bluealsa.service"
+    "camilladsp.service"
+    "oled.service"
+  )
+
+  for s in "${services[@]}"; do
+    restart_service_if_exists "$s"
+  done
+}
+
+# ---------- main ----------
+
+log "=== streamer install/update (branch Second) ==="
+
+USER_NAME="$(whoami)"
+HOME_DIR="$(eval echo ~"$USER_NAME")"
+REPO_URL="https://github.com/xtreamx2/streamer"
+BRANCH="Second"
+DEST_DIR="$HOME_DIR/streamer"
+
+echo "Wybierz tryb:"
+echo "1) Instalacja (fresh)"
+echo "2) Aktualizacja (update only)"
+read -r -p "Wybierz [1/2]: " MODE
+
+if [[ "$MODE" == "1" ]]; then
+  log "=== TRYB: INSTALACJA ==="
+
+  read -r -p "Czy zaktualizować system (apt update/upgrade)? [y/N]: " UPD
+  if [[ "$UPD" =~ ^[Yy]$ ]]; then
+    log "Aktualizacja systemu..."
+    run_safe "sudo apt update && sudo apt upgrade -y"
+  fi
+
+  log "Instalacja pakietów systemowych..."
+  run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/install_packages.sh)"
+
+  install_python_deps
+
+  run_config_scripts
+
+  log "Pobieranie / aktualizacja repozytorium..."
+  ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"
+
+  install_oled_service "$USER_NAME" "$DEST_DIR"
+
+  restart_all_services
+
+  log "=============================================="
+  log " INSTALACJA ZAKOŃCZONA. Jeśli zmieniano dtoverlay/dtparam, zrób reboot."
+  log "=============================================="
+  exit 0
+
+elif [[ "$MODE" == "2" ]]; then
+  log "=== TRYB: AKTUALIZACJA ==="
+
+  log "Pobieranie / aktualizacja repozytorium..."
+  ensure_git_clone "$REPO_URL" "$BRANCH" "$DEST_DIR"
+
+  install_oled_service "$USER_NAME" "$DEST_DIR"
+
+  restart_all_services
+
+  log "=============================================="
+  log " AKTUALIZACJA ZAKOŃCZONA."
+  log "=============================================="
+  exit 0
+
 else
-  log "[-] Brak skryptu OLED ($OLED_SCRIPT) — pomijam instalację usługi OLED."
+  log "Nieprawidłowy wybór trybu: $MODE"
+  exit 1
 fi
-
-# -----------------------
-# Zbiorcze przeładowanie systemd i restart usług
-# -----------------------
-log "Przeładowanie systemd i zbiorczy restart usług (jeśli istnieją)..."
-sudo systemctl daemon-reload
-
-SERVICES_TO_CHECK=(
-  "mpd.service"
-  "bluealsa.service"
-  "camilladsp.service"
-  "oled.service"
-)
-
-for s in "${SERVICES_TO_CHECK[@]}"; do
-  restart_service_if_exists "$s"
-done
-
-log "=============================================="
-log " Instalacja zakończona. Jeśli zmieniałeś dtoverlay/dtparam, uruchom ponownie RPi."
-log "=============================================="
-
-exit 0
