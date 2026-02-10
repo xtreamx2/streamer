@@ -68,6 +68,7 @@ class NowPlaying:
 
 @dataclass
 class ScreenState:
+    screen_off: bool = False
     mode: str = "main"
     menu_path: list = field(default_factory=list)
     last_input_time: float = field(default_factory=time.time)
@@ -487,6 +488,13 @@ def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings
         return
 
 def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings, client: MPDClient | None):
+
+        # jeśli ekran jest wygaszony → klik tylko wybudza
+    if state.screen_off:
+        state.last_input_time = time.time()
+        state.screen_off = False
+        return
+
     state.last_input_time = time.time()
 
     if state.mode == "edit":
@@ -581,13 +589,18 @@ def main():
 
         update_now_playing_from_mpd(client, np)
 
+
         # soft-dimming
         if inactive > settings.screensaver_off_after:
+            state.screen_off = True
             with canvas(device) as draw:
                 draw.rectangle((0, 0, device.width, device.height), outline=0, fill=0)
             time.sleep(0.1)
             continue
-        elif inactive > settings.screensaver_dim_after:
+        else:
+            state.screen_off = False
+
+        if inactive > settings.screensaver_dim_after:
             # soft dimming (10%)
             try:
                 device.contrast(int(255 * (settings.screensaver_dim_level / 100.0)))
