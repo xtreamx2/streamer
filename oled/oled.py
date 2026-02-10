@@ -19,13 +19,14 @@ from encoder import Encoder
 # ================== ŚCIEŻKI ==================
 
 BASE_DIR = Path(__file__).resolve().parent
-CONFIG_DIR = BASE_DIR / "config"
+# config i fonts są poziom wyżej: streamer/config, streamer/fonts
+CONFIG_DIR = BASE_DIR.parent / "config"
 CONFIG_DIR.mkdir(exist_ok=True)
 
 CONFIG_OLED = CONFIG_DIR / "config-oled.json"
 CONFIG_RADIO = CONFIG_DIR / "config-radio.json"
 
-FONT_PATH = BASE_DIR / "fonts" / "DejaVuSansMono.ttf"
+FONT_PATH = BASE_DIR.parent / "fonts" / "DejaVuSansMono.ttf"
 FONT_SMALL = ImageFont.truetype(str(FONT_PATH), 10)
 FONT_NORMAL = ImageFont.truetype(str(FONT_PATH), 12)
 
@@ -34,10 +35,10 @@ FONT_NORMAL = ImageFont.truetype(str(FONT_PATH), 12)
 
 DEFAULT_OLED_CONFIG = {
     "eq_mode": "5band",
-    "screensaver_dim_after": 20,
-    "screensaver_dim_level": 10,
-    "screensaver_off_after": 60,
-    "brightness_default": 255
+    "screensaver_dim_after": 10,   # po ilu sekundach ściemnia do ~10%
+    "screensaver_dim_level": 10,   # procent jasności przy przyciemnieniu (soft)
+    "screensaver_off_after": 60,   # po ilu sekundach całkowicie wygasić
+    "brightness_default": 50       # domyślnie 50% (soft)
 }
 
 DEFAULT_RADIO_CONFIG = {
@@ -83,10 +84,10 @@ class ScreenState:
 @dataclass
 class Settings:
     eq_mode: str = "5band"
-    screensaver_dim_after: int = 20
+    screensaver_dim_after: int = 10
     screensaver_dim_level: int = 10
     screensaver_off_after: int = 60
-    brightness_default: int = 255
+    brightness_default: int = 50
 
 
 # ================== PARAMETRY OLED ==================
@@ -119,10 +120,10 @@ def load_oled_config() -> Settings:
     cfg = load_json(CONFIG_OLED, DEFAULT_OLED_CONFIG)
     return Settings(
         eq_mode=cfg.get("eq_mode", "5band"),
-        screensaver_dim_after=int(cfg.get("screensaver_dim_after", 20)),
+        screensaver_dim_after=int(cfg.get("screensaver_dim_after", 10)),
         screensaver_dim_level=int(cfg.get("screensaver_dim_level", 10)),
         screensaver_off_after=int(cfg.get("screensaver_off_after", 60)),
-        brightness_default=int(cfg.get("brightness_default", 255)),
+        brightness_default=int(cfg.get("brightness_default", 50)),
     )
 
 
@@ -133,7 +134,7 @@ def load_radio_stations():
 
 def get_favorite_stations():
     stations = load_radio_stations()
-    return [s["name"] for s in stations if s.get("favorite")]
+    return [s for s in stations if s.get("favorite")]
 
 
 # ================== OLED INIT ==================
@@ -205,18 +206,33 @@ def draw_startup_animation(device):
         time.sleep(0.1)
 
 
-def draw_volume_bar(draw, x, y, width, height, volume):
-    segments = 12
-    seg_width = width // segments
-    filled = int(segments * volume / 100)
+def draw_volume_triangle(draw, x, y, width, height, volume):
+    """
+    Trójkątny wskaźnik głośności:
+    - obrys: pełny trójkąt
+    - wypełnienie: proporcjonalne do volume (0–100)
+    """
+    x0, y0 = x, y + height
+    x1, y1 = x + width, y
+    x2, y2 = x + width, y + height
 
-    for i in range(segments):
-        x0 = x + i * seg_width
-        x1 = x0 + seg_width - 1
-        if i < filled:
-            draw.rectangle((x0, y, x1, y + height), outline=255, fill=255)
-        else:
-            draw.rectangle((x0, y, x1, y + height), outline=255, fill=0)
+    # obrys
+    draw.line((x0, y0, x1, y1), fill=255)
+    draw.line((x1, y1, x2, y2), fill=255)
+    draw.line((x2, y2, x0, y0), fill=255)
+
+    if volume <= 0:
+        return
+
+    fill_width = int(width * (volume / 100.0))
+    if fill_width <= 0:
+        return
+
+    fx1 = x + fill_width
+    fx2 = x + fill_width
+    fy1 = y + int((1 - (volume / 100.0)) * height)
+
+    draw.polygon([(x0, y0), (fx1, fy1), (fx2, y2)], outline=255, fill=255)
 
 
 def scroll_text(text: str, width_chars: int, offset: int) -> str:
@@ -264,22 +280,28 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
         elif hq:
             draw.text((w - 20, 14), "HQ", font=FONT_SMALL, fill=255)
 
-        # pasek głośności + %
-        bar_width = w - 32
-        draw_volume_bar(draw, 0, h - 10, bar_width, 6, np.volume)
-        draw.text((w - 30, h - 12), f"{np.volume}%", font=FONT_SMALL, fill=255)
+        # trójkątny wskaźnik głośności + %
+        tri_width = 24
+        tri_height = 12
+        tri_x = 0
+        tri_y = h - tri_height - 1
+        draw_volume_triangle(draw, tri_x, tri_y, tri_width, tri_height, np.volume)
+        draw.text((tri_x + tri_width + 4, h - 12), f"{np.volume}%", font=FONT_SMALL, fill=255)
 
 
 # ================== MENU ==================
 
 def build_menu_structure():
+    fav_names = [s["name"] for s in get_favorite_stations()]
+    if not fav_names:
+        fav_names = ["(brak ulubionych)"]
     return {
         "root": ["Ustawienia", "Ulubione stacje", "Źródło", "ESC"],
         "Ustawienia": ["Filtry EQ", "Wygaszacz", "Ekran", "ESC"],
         "Filtry EQ": ["EQ 5-pasmowy", "EQ 2-pasmowy", "ESC"],
         "Wygaszacz": ["Czas do przyciemnienia", "Jasność po przyciemnieniu", "Czas do wygaszenia", "ESC"],
         "Ekran": ["Jasność domyślna", "ESC"],
-        "Ulubione stacje": get_favorite_stations() + ["ESC"],
+        "Ulubione stacje": fav_names + ["ESC"],
         "Źródło": ["Radio", "Pliki", "Bluetooth (niedostępne)", "ESC"],
     }
 
@@ -376,6 +398,21 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
         pass
 
 
+def play_station_by_name(client: MPDClient | None, name: str):
+    if client is None:
+        return
+    stations = load_radio_stations()
+    for s in stations:
+        if s["name"] == name:
+            try:
+                client.clear()
+                client.add(s["url"])
+                client.play()
+            except Exception:
+                pass
+            break
+
+
 # ================== ENKODER ==================
 
 def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState):
@@ -389,7 +426,7 @@ def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState):
         state.selected_index = max(0, min(len(items) - 1, state.selected_index + direction))
 
 
-def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings: Settings):
+def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings: Settings, client: MPDClient | None):
     if choice == "Radio":
         np.source = "radio"
     elif choice == "Pliki":
@@ -403,10 +440,11 @@ def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings
     elif choice == "EQ 2-pasmowy":
         settings.eq_mode = "2band"
         save_json(CONFIG_OLED, settings.__dict__)
-    # tu można dalej rozwijać ustawienia (wygaszacz, jasność, itp.)
+    elif choice in [s["name"] for s in get_favorite_stations()]:
+        play_station_by_name(client, choice)
 
 
-def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings):
+def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings, client: MPDClient | None):
     state.last_input_time = time.time()
 
     if state.mode == "main":
@@ -434,7 +472,7 @@ def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings):
         state.scroll_offset = 0
         return
 
-    handle_menu_action(choice, np, state, settings)
+    handle_menu_action(choice, np, state, settings, client)
 
 
 def on_encoder_hold(np: NowPlaying, state: ScreenState):
@@ -481,7 +519,7 @@ def main():
 
     enc = Encoder(
         on_rotate=lambda d: on_encoder_rotate(d, np, state),
-        on_click=lambda: on_encoder_click(np, state, settings),
+        on_click=lambda: on_encoder_click(np, state, settings, client),
         on_hold=lambda: on_encoder_hold(np, state)
     )
 
@@ -491,16 +529,22 @@ def main():
 
         update_now_playing_from_mpd(client, np)
 
-        # wygaszacz
+        # soft-dimming: 50% → 10% → OFF
         if inactive > settings.screensaver_off_after:
             with canvas(device) as draw:
                 draw.rectangle((0, 0, device.width, device.height), outline=0, fill=0)
             time.sleep(0.1)
             continue
         elif inactive > settings.screensaver_dim_after:
-            device.contrast(settings.screensaver_dim_level)
+            # soft – nie ruszamy hardware contrast, tylko rysujemy mniej często / zostawiamy jak jest
+            # tu możesz później dodać np. ciemniejszy motyw
+            pass
         else:
-            device.contrast(settings.brightness_default)
+            # jasność domyślna – jeśli Twój sterownik wspiera contrast()
+            try:
+                device.contrast(int(255 * (settings.brightness_default / 100.0)))
+            except Exception:
+                pass
 
         # timeout menu
         if state.mode == "menu" and inactive > MENU_TIMEOUT:

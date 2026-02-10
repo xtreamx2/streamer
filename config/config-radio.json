@@ -4,13 +4,73 @@
       "name": "Radio Paradise (FLAC)",
       "url": "http://stream.radioparadise.com/flac",
       "favorite": true,
+      "tags": ["hires", "flac", "electronic"]
+    },
+    {
+      "name": "Radio Paradise Mellow (FLAC)",
+      "url": "http://stream.radioparadise.com/mellow-flac",
+      "favorite": true,
+      "tags": ["hires", "flac", "chill"]
+    },
+    {
+      "name": "Radio Paradise Rock (FLAC)",
+      "url": "http://stream.radioparadise.com/rock-flac",
+      "favorite": false,
       "tags": ["hires", "flac"]
     },
     {
-      "name": "Example 320k MP3",
-      "url": "http://example.com/stream.mp3",
+      "name": "Radio Paradise World (FLAC)",
+      "url": "http://stream.radioparadise.com/world-etc-flac",
       "favorite": false,
-      "tags": ["mp3", "320k"]
+      "tags": ["hires", "flac"]
+    },
+    {
+      "name": "FIP Électro",
+      "url": "https://icecast.radiofrance.fr/fipelectro-midfi.mp3",
+      "favorite": true,
+      "tags": ["electronic", "aac"]
+    },
+    {
+      "name": "FIP Groove",
+      "url": "https://icecast.radiofrance.fr/fipgroove-midfi.mp3",
+      "favorite": false,
+      "tags": ["groove", "aac"]
+    },
+    {
+      "name": "SomaFM Groove Salad",
+      "url": "https://ice2.somafm.com/groovesalad-256-aac",
+      "favorite": true,
+      "tags": ["chill", "ambient"]
+    },
+    {
+      "name": "SomaFM Deep Space One",
+      "url": "https://ice2.somafm.com/deepspaceone-256-aac",
+      "favorite": false,
+      "tags": ["ambient", "space"]
+    },
+    {
+      "name": "SomaFM Drone Zone",
+      "url": "https://ice2.somafm.com/dronezone-256-aac",
+      "favorite": false,
+      "tags": ["ambient", "drone"]
+    },
+    {
+      "name": "DI.FM Trance",
+      "url": "http://prem2.di.fm/trance",
+      "favorite": true,
+      "tags": ["trance", "electronic"]
+    },
+    {
+      "name": "DI.FM Vocal Trance",
+      "url": "http://prem2.di.fm/vocaltrance",
+      "favorite": false,
+      "tags": ["trance", "vocal"]
+    },
+    {
+      "name": "DI.FM Progressive",
+      "url": "http://prem2.di.fm/progressive",
+      "favorite": false,
+      "tags": ["progressive", "electronic"]
     }
   ]
 }

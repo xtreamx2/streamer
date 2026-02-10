@@ -1,7 +1,7 @@
 {
   "eq_mode": "5band",
-  "screensaver_dim_after": 20,
+  "screensaver_dim_after": 10,
   "screensaver_dim_level": 10,
-  "screensaver_off_after": 60,
-  "brightness_default": 255
+  "screensaver_off_after": 30,
+  "brightness_default": 100
 }
