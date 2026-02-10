@@ -1,40 +1,36 @@
 {
   "stations": [
     {
-      "name": "FIP Électro",
+      "name": "FIP \u00c9lectro",
       "url": "https://icecast.radiofrance.fr/fipelectro-midfi.mp3",
       "favorite": true,
-      "tags": ["electronic", "aac"]
+      "tags": [
+        "electronic",
+        "aac"
+      ]
     },
     {
       "name": "FIP Groove",
       "url": "https://icecast.radiofrance.fr/fipgroove-midfi.mp3",
       "favorite": false,
-      "tags": ["groove", "aac"]
-    },
-    {
-      "name": "DI.FM Trance",
-      "url": "http://prem2.di.fm/trance",
-      "favorite": true,
-      "tags": ["trance", "electronic"]
+      "tags": [
+        "groove",
+        "aac"
+      ]
     },
     {
       "name": "Dance Classics Radio",
       "url": "http://vriezenet.nl:11051/dcflac",
       "favorite": false,
-      "tags": ["Classic Dance"]
+      "tags": [
+        "Classic Dance"
+      ]
     },
     {
-      "name": "DI.FM Vocal Trance",
-      "url": "http://prem2.di.fm/vocaltrance",
+      "name": "TNM Radio",
+      "url": "http://stream.tnm-radio.eu/ultra",
       "favorite": false,
-      "tags": ["trance", "vocal"]
-    },
-    {
-      "name": "DI.FM Progressive",
-      "url": "http://prem2.di.fm/progressive",
-      "favorite": false,
-      "tags": ["progressive", "electronic"]
+      "tags": []
     }
   ]
 }
