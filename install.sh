@@ -154,25 +154,29 @@ WantedBy=multi-user.target
 EOF
 
     log "[oled] plik usługi utworzony" "OK"
-},
-{
+}
+install_web_service() {
+    local user_name="$1"
+
+    log "[web] tworzę usługę systemd..." "INFO"
+
     sudo tee /etc/systemd/system/streamer-web.service >/dev/null <<EOF
 [Unit]
 Description=Streamer Web Interface
 After=network.target
 
 [Service]
-User=tom
-WorkingDirectory=/home/tom/streamer/web
-ExecStart=/usr/bin/python3 /home/tom/streamer/web/app.py
+User=$user_name
+WorkingDirectory=/home/$user_name/streamer/web
+ExecStart=/usr/bin/python3 /home/$user_name/streamer/web/app.py
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-    log "[Web Panel] plik usługi utworzony" "OK"
-
+    log "[web] plik usługi utworzony" "OK"
+}
 
 run_config_scripts() {
     log "[configure_audio] konfiguracja audio (I2S)..." "INFO"
