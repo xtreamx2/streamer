@@ -8,8 +8,8 @@ import RPi.GPIO as GPIO
 # KONFIGURACJA PINÓW
 # ==========================
 
-PIN_A = 24      # CLK
-PIN_B = 23      # DT
+PIN_A = 23      # CLK
+PIN_B = 24      # DT
 PIN_SW = 13     # SW (przycisk)
 
 DEBOUNCE_ROTATE = 0.002     # 2 ms

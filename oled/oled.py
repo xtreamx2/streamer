@@ -10,6 +10,9 @@ from luma.core.interface.serial import i2c
 from luma.core.render import canvas
 from luma.oled.device import ssd1306
 
+from PIL import ImageFont
+from mpd import MPDClient
+
 from encoder import Encoder
 
 
@@ -21,6 +24,10 @@ CONFIG_DIR.mkdir(exist_ok=True)
 
 CONFIG_OLED = CONFIG_DIR / "config-oled.json"
 CONFIG_RADIO = CONFIG_DIR / "config-radio.json"
+
+FONT_PATH = BASE_DIR / "fonts" / "DejaVuSansMono.ttf"
+FONT_SMALL = ImageFont.truetype(str(FONT_PATH), 10)
+FONT_NORMAL = ImageFont.truetype(str(FONT_PATH), 12)
 
 
 # ================== KONFIG DOMYŚLNY ==================
@@ -49,14 +56,14 @@ DEFAULT_RADIO_CONFIG = {
 
 @dataclass
 class NowPlaying:
-    source: str = "radio"
-    artist: str = "Artist"
-    title: str = "Title"
-    bitrate_kbps: int = 320
-    bit_depth: int = 24
-    sample_rate: int = 96000
+    source: str = "radio"   # "radio", "file", "bt"
+    artist: str = ""
+    title: str = ""
+    bitrate_kbps: int = 0
+    bit_depth: int = 16
+    sample_rate: int = 44100
     volume: int = 42
-    playing: bool = True
+    playing: bool = False
 
 
 @dataclass
@@ -104,6 +111,10 @@ def load_json(path: Path, default: dict) -> dict:
         return default.copy()
 
 
+def save_json(path: Path, data: dict):
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
 def load_oled_config() -> Settings:
     cfg = load_json(CONFIG_OLED, DEFAULT_OLED_CONFIG)
     return Settings(
@@ -133,6 +144,40 @@ def init_device():
     return device
 
 
+# ================== TEKST / FORMAT ==================
+
+def normalize(text: str) -> str:
+    # przy TTF nie musimy transliterować, ale zostawiamy na wszelki wypadek
+    return text or ""
+
+
+def get_source_icon(np: NowPlaying) -> str:
+    return "▶" if np.playing else "⏸"
+
+
+def format_bitrate(np: NowPlaying) -> str:
+    return f"{np.bitrate_kbps}k" if np.bitrate_kbps else ""
+
+
+def format_bitdepth(np: NowPlaying) -> str:
+    sr_khz = int(np.sample_rate / 1000)
+    return f"{np.bit_depth}/{sr_khz}"
+
+
+def is_hq(np: NowPlaying) -> bool:
+    if not np.playing:
+        return False
+    # HQ od 16/44.1
+    return np.bit_depth >= 16 and np.sample_rate >= 44100
+
+
+def is_hires(np: NowPlaying) -> bool:
+    if not np.playing:
+        return False
+    # HiRes powyżej 16/44.1
+    return np.bit_depth >= 24 or np.sample_rate > 48000
+
+
 # ================== RYSOWANIE ==================
 
 def draw_startup_animation(device):
@@ -155,26 +200,9 @@ def draw_startup_animation(device):
             max_line = int(len(logo_lines) * (i + 1) / steps)
             y = 0
             for line in logo_lines[:max_line]:
-                draw.text((0, y), line[:21], fill=255)
+                draw.text((0, y), line[:21], font=FONT_SMALL, fill=255)
                 y += 8
         time.sleep(0.1)
-
-
-def get_source_icon(np: NowPlaying) -> str:
-    return "▶" if np.playing else "⏸"
-
-
-def is_hires(np: NowPlaying) -> bool:
-    return np.bit_depth >= 24 or np.sample_rate > 48000
-
-
-def format_bitrate(np: NowPlaying) -> str:
-    return f"{np.bitrate_kbps}k"
-
-
-def format_bitdepth(np: NowPlaying) -> str:
-    sr_khz = int(np.sample_rate / 1000)
-    return f"{np.bit_depth}/{sr_khz}"
 
 
 def draw_volume_bar(draw, x, y, width, height, volume):
@@ -192,6 +220,7 @@ def draw_volume_bar(draw, x, y, width, height, volume):
 
 
 def scroll_text(text: str, width_chars: int, offset: int) -> str:
+    text = normalize(text)
     if len(text) <= width_chars:
         return text.ljust(width_chars)
     padded = text + "   "
@@ -204,14 +233,15 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
     chars_per_line = 16
 
     icon = get_source_icon(np)
+    hq = is_hq(np)
     hires = is_hires(np)
 
     if np.source == "radio" and np.artist:
         line1_text = np.artist
-        line2_text = np.title
+        line2_text = np.title or ""
     else:
-        line1_text = np.title
-        line2_text = f"{format_bitrate(np)} {format_bitdepth(np)}"
+        line1_text = np.title or ""
+        line2_text = f"{format_bitrate(np)} {format_bitdepth(np)}".strip()
 
     now = time.time()
     if now - state.last_scroll_time > SCROLL_SPEED:
@@ -223,27 +253,38 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
     line2 = scroll_text(line2_text, chars_per_line, state.scroll_offset_line2)
 
     with canvas(device) as draw:
-        draw.text((0, 0), icon, fill=255)
-        draw.text((12, 0), line1, fill=255)
+        # linia 1: ikona + tekst
+        draw.text((0, 0), icon, font=FONT_NORMAL, fill=255)
+        draw.text((14, 0), line1, font=FONT_NORMAL, fill=255)
 
-        draw.text((0, 10), line2, fill=255)
+        # linia 2: tekst + HQ/HiRes
+        draw.text((0, 14), line2, font=FONT_NORMAL, fill=255)
         if hires:
-            draw.text((w - 18, 10), "HR", fill=255)
+            draw.text((w - 26, 14), "HiRes", font=FONT_SMALL, fill=255)
+        elif hq:
+            draw.text((w - 20, 14), "HQ", font=FONT_SMALL, fill=255)
 
-        draw_volume_bar(draw, 0, h - 8, w - 30, 6, np.volume)
-        draw.text((w - 28, h - 10), f"{np.volume}%", fill=255)
+        # pasek głośności + %
+        bar_width = w - 32
+        draw_volume_bar(draw, 0, h - 10, bar_width, 6, np.volume)
+        draw.text((w - 30, h - 12), f"{np.volume}%", font=FONT_SMALL, fill=255)
 
 
 # ================== MENU ==================
 
-MENU_STRUCTURE = {
-    "root": ["Ustawienia", "Ulubione stacje", "ESC"],
-    "Ustawienia": ["Filtry EQ", "Wygaszacz", "Ekran", "ESC"],
-    "Filtry EQ": ["EQ 5-pasmowy", "EQ 2-pasmowy", "ESC"],
-    "Wygaszacz": ["Czas do przyciemnienia", "Jasność po przyciemnieniu", "Czas do wygaszenia", "ESC"],
-    "Ekran": ["Jasność domyślna", "ESC"],
-    "Ulubione stacje": get_favorite_stations() + ["ESC"],
-}
+def build_menu_structure():
+    return {
+        "root": ["Ustawienia", "Ulubione stacje", "Źródło", "ESC"],
+        "Ustawienia": ["Filtry EQ", "Wygaszacz", "Ekran", "ESC"],
+        "Filtry EQ": ["EQ 5-pasmowy", "EQ 2-pasmowy", "ESC"],
+        "Wygaszacz": ["Czas do przyciemnienia", "Jasność po przyciemnieniu", "Czas do wygaszenia", "ESC"],
+        "Ekran": ["Jasność domyślna", "ESC"],
+        "Ulubione stacje": get_favorite_stations() + ["ESC"],
+        "Źródło": ["Radio", "Pliki", "Bluetooth (niedostępne)", "ESC"],
+    }
+
+
+MENU_STRUCTURE = build_menu_structure()
 
 
 def current_menu_items(state: ScreenState):
@@ -264,14 +305,75 @@ def draw_menu(device, state: ScreenState):
         state.scroll_offset = state.selected_index - visible + 1
 
     with canvas(device) as draw:
-        draw.text((0, 0), title[:16], fill=255)
+        draw.text((0, 0), title[:16], font=FONT_NORMAL, fill=255)
 
         for i in range(visible):
             idx = state.scroll_offset + i
             if idx >= len(items):
                 break
             prefix = "> " if idx == state.selected_index else "  "
-            draw.text((0, 10 + i * 10), prefix + items[idx][:14], fill=255)
+            draw.text((0, 14 + i * 12), prefix + items[idx][:14], font=FONT_NORMAL, fill=255)
+
+
+# ================== MPD ==================
+
+def init_mpd():
+    client = MPDClient()
+    client.timeout = 2
+    client.idletimeout = None
+    try:
+        client.connect("localhost", 6600)
+    except Exception:
+        client = None
+    return client
+
+
+def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
+    if client is None:
+        return
+
+    try:
+        status = client.status()
+        song = client.currentsong()
+
+        np.playing = (status.get("state") == "play")
+
+        if "volume" in status:
+            try:
+                np.volume = int(status["volume"])
+            except ValueError:
+                pass
+
+        if "audio" in status:
+            # "44100:16:2"
+            parts = status["audio"].split(":")
+            if len(parts) >= 2:
+                try:
+                    np.sample_rate = int(parts[0])
+                    np.bit_depth = int(parts[1])
+                except ValueError:
+                    pass
+
+        if "bitrate" in status:
+            try:
+                np.bitrate_kbps = int(status["bitrate"])
+            except ValueError:
+                pass
+
+        file_path = song.get("file", "")
+
+        if file_path.startswith("http"):
+            np.source = "radio"
+        elif file_path.startswith("bluetooth:"):
+            np.source = "bt"
+        else:
+            np.source = "file"
+
+        np.title = song.get("title", file_path)
+        np.artist = song.get("artist", "")
+
+    except Exception:
+        pass
 
 
 # ================== ENKODER ==================
@@ -287,7 +389,24 @@ def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState):
         state.selected_index = max(0, min(len(items) - 1, state.selected_index + direction))
 
 
-def on_encoder_click(np: NowPlaying, state: ScreenState):
+def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings: Settings):
+    if choice == "Radio":
+        np.source = "radio"
+    elif choice == "Pliki":
+        np.source = "file"
+    elif choice == "Bluetooth (niedostępne)":
+        # tylko placeholder
+        pass
+    elif choice == "EQ 5-pasmowy":
+        settings.eq_mode = "5band"
+        save_json(CONFIG_OLED, settings.__dict__)
+    elif choice == "EQ 2-pasmowy":
+        settings.eq_mode = "2band"
+        save_json(CONFIG_OLED, settings.__dict__)
+    # tu można dalej rozwijać ustawienia (wygaszacz, jasność, itp.)
+
+
+def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings):
     state.last_input_time = time.time()
 
     if state.mode == "main":
@@ -295,6 +414,9 @@ def on_encoder_click(np: NowPlaying, state: ScreenState):
         return
 
     items = current_menu_items(state)
+    if not items:
+        return
+
     choice = items[state.selected_index]
 
     if choice == "ESC":
@@ -312,7 +434,7 @@ def on_encoder_click(np: NowPlaying, state: ScreenState):
         state.scroll_offset = 0
         return
 
-    print("Wybrano:", choice)
+    handle_menu_action(choice, np, state, settings)
 
 
 def on_encoder_hold(np: NowPlaying, state: ScreenState):
@@ -351,21 +473,23 @@ def main():
 
     device = init_device()
     settings = load_oled_config()
-
     np = NowPlaying()
     state = ScreenState()
+    client = init_mpd()
 
     draw_startup_animation(device)
 
     enc = Encoder(
         on_rotate=lambda d: on_encoder_rotate(d, np, state),
-        on_click=lambda: on_encoder_click(np, state),
+        on_click=lambda: on_encoder_click(np, state, settings),
         on_hold=lambda: on_encoder_hold(np, state)
     )
 
     while running:
         now = time.time()
         inactive = now - state.last_input_time
+
+        update_now_playing_from_mpd(client, np)
 
         # wygaszacz
         if inactive > settings.screensaver_off_after:
