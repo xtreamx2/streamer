@@ -172,7 +172,7 @@ WantedBy=multi-user.target
 EOF
 
     log "[Web Panel] plik usługi utworzony" "OK"
-}
+
 
 run_config_scripts() {
     log "[configure_audio] konfiguracja audio (I2S)..." "INFO"
