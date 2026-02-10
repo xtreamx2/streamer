@@ -203,24 +203,13 @@ def draw_startup_animation(device):
 
 
 def draw_volume_icon(draw, x, y, height, width, volume):
-    """
-    Ikona głośności:
-    |--------------------
-    |████████------------
-    |████████████████----
-    """
-    # pionowa kreska
     draw.line((x, y, x, y + height), fill=255)
-
-    # obrys poziomej linii
     mid = y + height // 2
     draw.line((x, mid, x + width, mid), fill=255)
 
-    # wypełnienie
     fill_width = int(width * (volume / 100.0))
     if fill_width > 0:
         draw.line((x, mid, x + fill_width, mid), fill=255)
-
 
 def scroll_text(text: str, width_chars: int, offset: int) -> str:
     text = normalize(text)
@@ -239,13 +228,19 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
     hq = is_hq(np)
     hires = is_hires(np)
 
-    if np.source == "radio" and np.artist:
-        line1_text = np.artist
-        line2_text = np.title or ""
+    # RADIO
+    if np.source == "radio":
+        if np.artist:
+            line1_text = np.artist
+            line2_text = np.title
+        else:
+            line1_text = np.title
+            line2_text = ""
     else:
         line1_text = np.title or ""
         line2_text = f"{format_bitrate(np)} {format_bitdepth(np)}".strip()
 
+    # przewijanie
     now = time.time()
     if now - state.last_scroll_time > SCROLL_SPEED:
         state.scroll_offset_line1 += 1
@@ -255,11 +250,17 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
     line1 = scroll_text(line1_text, chars_per_line - 2, state.scroll_offset_line1)
     line2 = scroll_text(line2_text, chars_per_line, state.scroll_offset_line2)
 
+    bitinfo = f"{np.bit_depth}bit / {np.sample_rate//1000}kHz"
+
     with canvas(device) as draw:
         draw.text((0, 0), icon, font=FONT_NORMAL, fill=255)
         draw.text((14, 0), line1, font=FONT_NORMAL, fill=255)
 
         draw.text((0, 14), line2, font=FONT_NORMAL, fill=255)
+
+        draw.text((0, 26), bitinfo, font=FONT_SMALL, fill=255)
+
+        # HQ / HiRes
         if hires:
             draw.text((w - 26, 14), "HiRes", font=FONT_SMALL, fill=255)
         elif hq:
@@ -341,12 +342,14 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
 
         np.playing = (status.get("state") == "play")
 
+        # głośność z MPD
         if "volume" in status:
             try:
                 np.volume = int(status["volume"])
             except ValueError:
                 pass
 
+        # audio format
         if "audio" in status:
             parts = status["audio"].split(":")
             if len(parts) >= 2:
@@ -356,6 +359,7 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
                 except ValueError:
                     pass
 
+        # bitrate
         if "bitrate" in status:
             try:
                 np.bitrate_kbps = int(status["bitrate"])
@@ -364,6 +368,7 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
 
         file_path = song.get("file", "")
 
+        # źródło
         if file_path.startswith("http"):
             np.source = "radio"
         elif file_path.startswith("bluetooth:"):
@@ -371,6 +376,27 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
         else:
             np.source = "file"
 
+        # RADIO — NAZWA STACJI
+        if np.source == "radio":
+            stations = load_radio_stations()
+            for s in stations:
+                if s["url"] in file_path:
+                    np.title = s["name"]
+                    break
+            else:
+                np.title = song.get("title", file_path)
+
+            # METADANE STREAMU: "Artist - Title"
+            stream_title = song.get("title", "")
+            if " - " in stream_title:
+                artist, title = stream_title.split(" - ", 1)
+                np.artist = artist
+                np.title = title
+            else:
+                np.artist = ""
+            return
+
+        # PLIKI
         np.title = song.get("title", file_path)
         np.artist = song.get("artist", "")
 
@@ -395,16 +421,21 @@ def play_station_by_name(client: MPDClient | None, name: str):
 
 # ================== ENKODER ==================
 
-def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState):
+def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState, client: MPDClient | None):
     state.last_input_time = time.time()
 
     if state.mode == "main":
-        np.volume = max(0, min(100, np.volume + direction))
+        new_vol = max(0, min(100, np.volume + direction))
+        if client:
+            try:
+                client.setvol(new_vol)
+            except:
+                pass
+        np.volume = new_vol
 
     elif state.mode == "menu":
         items = current_menu_items(state)
         state.selected_index = max(0, min(len(items) - 1, state.selected_index + direction))
-
 
 def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings: Settings, client: MPDClient | None):
     if choice == "Radio":
@@ -497,7 +528,7 @@ def main():
     draw_startup_animation(device)
 
     enc = Encoder(
-        on_rotate=lambda d: on_encoder_rotate(d, np, state),
+        on_rotate=lambda d: on_encoder_rotate(d, np, state, client),
         on_click=lambda: on_encoder_click(np, state, settings, client),
         on_hold=lambda: on_encoder_hold(np, state)
     )
