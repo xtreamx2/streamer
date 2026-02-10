@@ -10,7 +10,7 @@ from luma.core.interface.serial import i2c
 from luma.core.render import canvas
 from luma.oled.device import ssd1306
 
-from encoder import Encoder  # integracja z enkoderem
+from encoder import Encoder
 
 
 # ================== ŚCIEŻKI ==================
@@ -49,7 +49,7 @@ DEFAULT_RADIO_CONFIG = {
 
 @dataclass
 class NowPlaying:
-    source: str = "radio"  # "radio", "file", "bt"
+    source: str = "radio"
     artist: str = "Artist"
     title: str = "Title"
     bitrate_kbps: int = 320
@@ -64,6 +64,7 @@ class ScreenState:
     mode: str = "main"
     menu_path: list = field(default_factory=list)
     last_input_time: float = field(default_factory=time.time)
+
     scroll_offset_line1: int = 0
     scroll_offset_line2: int = 0
     last_scroll_time: float = field(default_factory=time.time)
@@ -103,10 +104,6 @@ def load_json(path: Path, default: dict) -> dict:
         return default.copy()
 
 
-def save_json(path: Path, data: dict):
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-
-
 def load_oled_config() -> Settings:
     cfg = load_json(CONFIG_OLED, DEFAULT_OLED_CONFIG)
     return Settings(
@@ -121,6 +118,11 @@ def load_oled_config() -> Settings:
 def load_radio_stations():
     data = load_json(CONFIG_RADIO, DEFAULT_RADIO_CONFIG)
     return data.get("stations", [])
+
+
+def get_favorite_stations():
+    stations = load_radio_stations()
+    return [s["name"] for s in stations if s.get("favorite")]
 
 
 # ================== OLED INIT ==================
@@ -159,8 +161,6 @@ def draw_startup_animation(device):
 
 
 def get_source_icon(np: NowPlaying) -> str:
-    if np.source in ("radio", "file", "bt"):
-        return "▶" if np.playing else "⏸"
     return "▶" if np.playing else "⏸"
 
 
@@ -196,8 +196,7 @@ def scroll_text(text: str, width_chars: int, offset: int) -> str:
         return text.ljust(width_chars)
     padded = text + "   "
     start = offset % len(padded)
-    view = (padded + padded)[start:start + width_chars]
-    return view
+    return (padded + padded)[start:start + width_chars]
 
 
 def draw_main_screen(device, np: NowPlaying, state: ScreenState):
@@ -220,69 +219,69 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
         state.scroll_offset_line2 += 1
         state.last_scroll_time = now
 
-    line1_scrolled = scroll_text(line1_text, chars_per_line - 2, state.scroll_offset_line1)
-    line2_scrolled = scroll_text(line2_text, chars_per_line, state.scroll_offset_line2)
+    line1 = scroll_text(line1_text, chars_per_line - 2, state.scroll_offset_line1)
+    line2 = scroll_text(line2_text, chars_per_line, state.scroll_offset_line2)
 
     with canvas(device) as draw:
         draw.text((0, 0), icon, fill=255)
-        draw.text((12, 0), line1_scrolled, fill=255)
+        draw.text((12, 0), line1, fill=255)
 
-        draw.text((0, 10), line2_scrolled, fill=255)
+        draw.text((0, 10), line2, fill=255)
         if hires:
             draw.text((w - 18, 10), "HR", fill=255)
 
-        draw_volume_bar(draw, 0, h - 8, w, 6, np.volume)
+        draw_volume_bar(draw, 0, h - 8, w - 30, 6, np.volume)
+        draw.text((w - 28, h - 10), f"{np.volume}%", fill=255)
 
 
-# ================== MENU (SZKIELET) ==================
+# ================== MENU ==================
 
 MENU_STRUCTURE = {
-    "root": ["Ustawienia", "Ulubione stacje"],
+    "root": ["Ustawienia", "Ulubione stacje", "ESC"],
     "Ustawienia": ["Filtry EQ", "Wygaszacz", "Ekran", "ESC"],
     "Filtry EQ": ["EQ 5-pasmowy", "EQ 2-pasmowy", "ESC"],
     "Wygaszacz": ["Czas do przyciemnienia", "Jasność po przyciemnieniu", "Czas do wygaszenia", "ESC"],
     "Ekran": ["Jasność domyślna", "ESC"],
-    "Ulubione stacje": ["(lista z config-radio)", "ESC"],
+    "Ulubione stacje": get_favorite_stations() + ["ESC"],
 }
 
 
 def current_menu_items(state: ScreenState):
     if not state.menu_path:
         return MENU_STRUCTURE["root"]
-    key = state.menu_path[-1]
-    return MENU_STRUCTURE.get(key, ["ESC"])
+    return MENU_STRUCTURE.get(state.menu_path[-1], ["ESC"])
 
 
 def draw_menu(device, state: ScreenState):
     items = current_menu_items(state)
     title = state.menu_path[-1] if state.menu_path else "MENU"
 
-    visible_lines = 2  # ile pozycji pokazujemy naraz
+    visible = 2
 
-    # koryguj scroll
     if state.selected_index < state.scroll_offset:
         state.scroll_offset = state.selected_index
-    elif state.selected_index >= state.scroll_offset + visible_lines:
-        state.scroll_offset = state.selected_index - visible_lines + 1
+    elif state.selected_index >= state.scroll_offset + visible:
+        state.scroll_offset = state.selected_index - visible + 1
 
     with canvas(device) as draw:
         draw.text((0, 0), title[:16], fill=255)
 
-        for i in range(visible_lines):
-            item_index = state.scroll_offset + i
-            if item_index >= len(items):
+        for i in range(visible):
+            idx = state.scroll_offset + i
+            if idx >= len(items):
                 break
+            prefix = "> " if idx == state.selected_index else "  "
+            draw.text((0, 10 + i * 10), prefix + items[idx][:14], fill=255)
 
-            prefix = "> " if item_index == state.selected_index else "  "
-            draw.text((0, 10 + i * 10), prefix + items[item_index][:14], fill=255)
 
-# ================== ENKODER – CALLBACKI ==================
+# ================== ENKODER ==================
 
 def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState):
     state.last_input_time = time.time()
 
     if state.mode == "main":
         np.volume = max(0, min(100, np.volume + direction))
+
     elif state.mode == "menu":
         items = current_menu_items(state)
         state.selected_index = max(0, min(len(items) - 1, state.selected_index + direction))
@@ -293,29 +292,27 @@ def on_encoder_click(np: NowPlaying, state: ScreenState):
 
     if state.mode == "main":
         np.playing = not np.playing
-    elif state.mode == "menu":
-        items = current_menu_items(state)
-        choice = items[state.selected_index]
+        return
 
-        if choice == "ESC":
-            if state.menu_path:
-                state.menu_path.pop()
-            else:
-                state.mode = "main"
-            state.selected_index = 0
-            state.scroll_offset = 0
-            return
+    items = current_menu_items(state)
+    choice = items[state.selected_index]
 
-        # jeśli to podmenu
-        if choice in MENU_STRUCTURE:
-            state.menu_path.append(choice)
-            state.selected_index = 0
-            state.scroll_offset = 0
-            return
+    if choice == "ESC":
+        if state.menu_path:
+            state.menu_path.pop()
+        else:
+            state.mode = "main"
+        state.selected_index = 0
+        state.scroll_offset = 0
+        return
 
-        # jeśli to opcja końcowa (np. EQ 5-pasmowy)
-        # tu będzie logika ustawień
-        print("Wybrano:", choice)
+    if choice in MENU_STRUCTURE:
+        state.menu_path.append(choice)
+        state.selected_index = 0
+        state.scroll_offset = 0
+        return
+
+    print("Wybrano:", choice)
 
 
 def on_encoder_hold(np: NowPlaying, state: ScreenState):
@@ -324,11 +321,16 @@ def on_encoder_hold(np: NowPlaying, state: ScreenState):
     if state.mode == "main":
         state.mode = "menu"
         state.menu_path = []
+        state.selected_index = 0
+        state.scroll_offset = 0
+
     elif state.mode == "menu":
         if state.menu_path:
             state.menu_path.pop()
         else:
             state.mode = "main"
+        state.selected_index = 0
+        state.scroll_offset = 0
 
 
 # ================== PĘTLA GŁÓWNA ==================
@@ -349,39 +351,40 @@ def main():
 
     device = init_device()
     settings = load_oled_config()
-    stations = load_radio_stations()
 
     np = NowPlaying()
     state = ScreenState()
 
     draw_startup_animation(device)
 
-    def rotate_cb(direction):
-        on_encoder_rotate(direction, np, state)
-
-    def click_cb():
-        on_encoder_click(np, state)
-
-    def hold_cb():
-        on_encoder_hold(np, state)
-
     enc = Encoder(
-        on_rotate=rotate_cb,
-        on_click=click_cb,
-        on_hold=hold_cb
+        on_rotate=lambda d: on_encoder_rotate(d, np, state),
+        on_click=lambda: on_encoder_click(np, state),
+        on_hold=lambda: on_encoder_hold(np, state)
     )
 
     while running:
         now = time.time()
+        inactive = now - state.last_input_time
 
-        if state.mode == "menu" and (now - state.last_input_time) > MENU_TIMEOUT:
+        # wygaszacz
+        if inactive > settings.screensaver_off_after:
+            with canvas(device) as draw:
+                draw.rectangle((0, 0, device.width, device.height), outline=0, fill=0)
+            time.sleep(0.1)
+            continue
+        elif inactive > settings.screensaver_dim_after:
+            device.contrast(settings.screensaver_dim_level)
+        else:
+            device.contrast(settings.brightness_default)
+
+        # timeout menu
+        if state.mode == "menu" and inactive > MENU_TIMEOUT:
             state.mode = "main"
-
-        # TODO: aktualizacja np z MPD / playera / stacji
 
         if state.mode == "main":
             draw_main_screen(device, np, state)
-        elif state.mode == "menu":
+        else:
             draw_menu(device, state)
 
         time.sleep(1.0 / FPS)
