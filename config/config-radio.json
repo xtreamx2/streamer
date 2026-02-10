@@ -1,30 +1,6 @@
 {
   "stations": [
     {
-      "name": "Radio Paradise (FLAC)",
-      "url": "http://stream.radioparadise.com/flac",
-      "favorite": true,
-      "tags": ["hires", "flac", "electronic"]
-    },
-    {
-      "name": "Radio Paradise Mellow (FLAC)",
-      "url": "http://stream.radioparadise.com/mellow-flac",
-      "favorite": true,
-      "tags": ["hires", "flac", "chill"]
-    },
-    {
-      "name": "Radio Paradise Rock (FLAC)",
-      "url": "http://stream.radioparadise.com/rock-flac",
-      "favorite": false,
-      "tags": ["hires", "flac"]
-    },
-    {
-      "name": "Radio Paradise World (FLAC)",
-      "url": "http://stream.radioparadise.com/world-etc-flac",
-      "favorite": false,
-      "tags": ["hires", "flac"]
-    },
-    {
       "name": "FIP Électro",
       "url": "https://icecast.radiofrance.fr/fipelectro-midfi.mp3",
       "favorite": true,
@@ -37,28 +13,16 @@
       "tags": ["groove", "aac"]
     },
     {
-      "name": "SomaFM Groove Salad",
-      "url": "https://ice2.somafm.com/groovesalad-256-aac",
-      "favorite": true,
-      "tags": ["chill", "ambient"]
-    },
-    {
-      "name": "SomaFM Deep Space One",
-      "url": "https://ice2.somafm.com/deepspaceone-256-aac",
-      "favorite": false,
-      "tags": ["ambient", "space"]
-    },
-    {
-      "name": "SomaFM Drone Zone",
-      "url": "https://ice2.somafm.com/dronezone-256-aac",
-      "favorite": false,
-      "tags": ["ambient", "drone"]
-    },
-    {
       "name": "DI.FM Trance",
       "url": "http://prem2.di.fm/trance",
       "favorite": true,
       "tags": ["trance", "electronic"]
+    },
+    {
+      "name": "Dance Classics Radio",
+      "url": "http://vriezenet.nl:11051/dcflac",
+      "favorite": false,
+      "tags": ["Classic Dance"]
     },
     {
       "name": "DI.FM Vocal Trance",
