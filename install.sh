@@ -154,8 +154,8 @@ WantedBy=multi-user.target
 EOF
 
     log "[oled] plik usługi utworzony" "OK"
-}
-
+},
+{
     sudo tee /etc/systemd/system/streamer-web.service >/dev/null <<EOF
 [Unit]
 Description=Streamer Web Interface
