@@ -19,7 +19,6 @@ from encoder import Encoder
 # ================== ŚCIEŻKI ==================
 
 BASE_DIR = Path(__file__).resolve().parent
-# config i fonts są poziom wyżej: streamer/config, streamer/fonts
 CONFIG_DIR = BASE_DIR.parent / "config"
 CONFIG_DIR.mkdir(exist_ok=True)
 
@@ -35,10 +34,10 @@ FONT_NORMAL = ImageFont.truetype(str(FONT_PATH), 12)
 
 DEFAULT_OLED_CONFIG = {
     "eq_mode": "5band",
-    "screensaver_dim_after": 10,   # po ilu sekundach ściemnia do ~10%
-    "screensaver_dim_level": 10,   # procent jasności przy przyciemnieniu (soft)
-    "screensaver_off_after": 60,   # po ilu sekundach całkowicie wygasić
-    "brightness_default": 50       # domyślnie 50% (soft)
+    "screensaver_dim_after": 10,
+    "screensaver_dim_level": 10,
+    "screensaver_off_after": 60,
+    "brightness_default": 50
 }
 
 DEFAULT_RADIO_CONFIG = {
@@ -57,7 +56,7 @@ DEFAULT_RADIO_CONFIG = {
 
 @dataclass
 class NowPlaying:
-    source: str = "radio"   # "radio", "file", "bt"
+    source: str = "radio"
     artist: str = ""
     title: str = ""
     bitrate_kbps: int = 0
@@ -148,7 +147,6 @@ def init_device():
 # ================== TEKST / FORMAT ==================
 
 def normalize(text: str) -> str:
-    # przy TTF nie musimy transliterować, ale zostawiamy na wszelki wypadek
     return text or ""
 
 
@@ -168,14 +166,12 @@ def format_bitdepth(np: NowPlaying) -> str:
 def is_hq(np: NowPlaying) -> bool:
     if not np.playing:
         return False
-    # HQ od 16/44.1
     return np.bit_depth >= 16 and np.sample_rate >= 44100
 
 
 def is_hires(np: NowPlaying) -> bool:
     if not np.playing:
         return False
-    # HiRes powyżej 16/44.1
     return np.bit_depth >= 24 or np.sample_rate > 48000
 
 
@@ -206,33 +202,24 @@ def draw_startup_animation(device):
         time.sleep(0.1)
 
 
-def draw_volume_triangle(draw, x, y, width, height, volume):
+def draw_volume_icon(draw, x, y, height, width, volume):
     """
-    Trójkątny wskaźnik głośności:
-    - obrys: pełny trójkąt
-    - wypełnienie: proporcjonalne do volume (0–100)
+    Ikona głośności:
+    |--------------------
+    |████████------------
+    |████████████████----
     """
-    x0, y0 = x, y + height
-    x1, y1 = x + width, y
-    x2, y2 = x + width, y + height
+    # pionowa kreska
+    draw.line((x, y, x, y + height), fill=255)
 
-    # obrys
-    draw.line((x0, y0, x1, y1), fill=255)
-    draw.line((x1, y1, x2, y2), fill=255)
-    draw.line((x2, y2, x0, y0), fill=255)
+    # obrys poziomej linii
+    mid = y + height // 2
+    draw.line((x, mid, x + width, mid), fill=255)
 
-    if volume <= 0:
-        return
-
+    # wypełnienie
     fill_width = int(width * (volume / 100.0))
-    if fill_width <= 0:
-        return
-
-    fx1 = x + fill_width
-    fx2 = x + fill_width
-    fy1 = y + int((1 - (volume / 100.0)) * height)
-
-    draw.polygon([(x0, y0), (fx1, fy1), (fx2, y2)], outline=255, fill=255)
+    if fill_width > 0:
+        draw.line((x, mid, x + fill_width, mid), fill=255)
 
 
 def scroll_text(text: str, width_chars: int, offset: int) -> str:
@@ -269,24 +256,18 @@ def draw_main_screen(device, np: NowPlaying, state: ScreenState):
     line2 = scroll_text(line2_text, chars_per_line, state.scroll_offset_line2)
 
     with canvas(device) as draw:
-        # linia 1: ikona + tekst
         draw.text((0, 0), icon, font=FONT_NORMAL, fill=255)
         draw.text((14, 0), line1, font=FONT_NORMAL, fill=255)
 
-        # linia 2: tekst + HQ/HiRes
         draw.text((0, 14), line2, font=FONT_NORMAL, fill=255)
         if hires:
             draw.text((w - 26, 14), "HiRes", font=FONT_SMALL, fill=255)
         elif hq:
             draw.text((w - 20, 14), "HQ", font=FONT_SMALL, fill=255)
 
-        # trójkątny wskaźnik głośności + %
-        tri_width = 24
-        tri_height = 12
-        tri_x = 0
-        tri_y = h - tri_height - 1
-        draw_volume_triangle(draw, tri_x, tri_y, tri_width, tri_height, np.volume)
-        draw.text((tri_x + tri_width + 4, h - 12), f"{np.volume}%", font=FONT_SMALL, fill=255)
+        # ikona głośności
+        draw_volume_icon(draw, 0, h - 12, 10, w - 40, np.volume)
+        draw.text((w - 30, h - 12), f"{np.volume}%", font=FONT_SMALL, fill=255)
 
 
 # ================== MENU ==================
@@ -367,7 +348,6 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
                 pass
 
         if "audio" in status:
-            # "44100:16:2"
             parts = status["audio"].split(":")
             if len(parts) >= 2:
                 try:
@@ -432,7 +412,6 @@ def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings
     elif choice == "Pliki":
         np.source = "file"
     elif choice == "Bluetooth (niedostępne)":
-        # tylko placeholder
         pass
     elif choice == "EQ 5-pasmowy":
         settings.eq_mode = "5band"
@@ -529,37 +508,10 @@ def main():
 
         update_now_playing_from_mpd(client, np)
 
-        # soft-dimming: 50% → 10% → OFF
+        # soft-dimming
         if inactive > settings.screensaver_off_after:
             with canvas(device) as draw:
                 draw.rectangle((0, 0, device.width, device.height), outline=0, fill=0)
             time.sleep(0.1)
             continue
-        elif inactive > settings.screensaver_dim_after:
-            # soft – nie ruszamy hardware contrast, tylko rysujemy mniej często / zostawiamy jak jest
-            # tu możesz później dodać np. ciemniejszy motyw
-            pass
-        else:
-            # jasność domyślna – jeśli Twój sterownik wspiera contrast()
-            try:
-                device.contrast(int(255 * (settings.brightness_default / 100.0)))
-            except Exception:
-                pass
-
-        # timeout menu
-        if state.mode == "menu" and inactive > MENU_TIMEOUT:
-            state.mode = "main"
-
-        if state.mode == "main":
-            draw_main_screen(device, np, state)
-        else:
-            draw_menu(device, state)
-
-        time.sleep(1.0 / FPS)
-
-    enc.stop()
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
+        elif inactive
