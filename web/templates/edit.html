@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Edytuj stację</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: auto; }
+    </style>
+</head>
+<body>
+
+<h2>{{ station and "Edytuj stację" or "Dodaj stację" }}</h2>
+
+<form method="POST">
+    <p>Nazwa:<br>
+    <input type="text" name="name" value="{{ station.name if station else '' }}" required></p>
+
+    <p>URL:<br>
+    <input type="text" name="url" value="{{ station.url if station else '' }}" required></p>
+
+    <p>
+    <label>
+        <input type="checkbox" name="favorite"
+            {% if station and station.favorite %}checked{% endif %}>
+        Ulubiona
+    </label>
+    </p>
+
+    <button type="submit">Zapisz</button>
+</form>
+
+<p><a href="/">← Powrót</a></p>
+
+</body>
+</html>
