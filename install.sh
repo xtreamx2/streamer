@@ -206,6 +206,31 @@ sudo systemctl enable oled.service
 
 log "[OK] Usługa OLED zainstalowana i uruchomiona."
 
+OLED_SCRIPT="/home/$USER_NAME/streamer/oled/oled.py"
+
+if [ -f "$OLED_SCRIPT" ]; then
+  log "Instalacja usługi OLED..."
+  sudo tee /etc/systemd/system/oled.service >/dev/null << EOF
+[Unit]
+Description=OLED Display Service
+After=network.target syslog.target dev-i2c-1.device
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/$USER_NAME/streamer/oled/oled.py
+Restart=always
+User=$USER_NAME
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now oled.service
+  log "[OK] Usługa OLED zainstalowana i uruchomiona."
+else
+  log "[-] Brak skryptu OLED ($OLED_SCRIPT) — pomijam instalację usługi OLED."
+fi
 
 log "Restart usług..."
 restart_service_if_exists "mpd.service"
