@@ -181,6 +181,8 @@ detect_wifi || true
 
 log "Instalacja usługi OLED..."
 
+USER_NAME=$(whoami)
+
 # Tworzenie pliku usługi
 sudo tee /etc/systemd/system/oled.service >/dev/null << 'EOF'
 [Unit]
@@ -189,9 +191,9 @@ After=network.target syslog.target dev-i2c-1.device
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/'"$USER"'/streamer/oled/oled.py
+ExecStart=/usr/bin/python3 /home/'"$USER_NAME"'/streamer/oled/oled.py
 Restart=always
-User='"$USER"'
+User='"$USER_NAME"'
 
 [Install]
 WantedBy=multi-user.target
