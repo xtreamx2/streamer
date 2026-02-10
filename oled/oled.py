@@ -25,7 +25,7 @@ CONFIG_DIR.mkdir(exist_ok=True)
 CONFIG_OLED = CONFIG_DIR / "config-oled.json"
 CONFIG_RADIO = CONFIG_DIR / "config-radio.json"
 
-FONT_PATH = BASE_DIR.parent / "fonts" / "DejaVuSansMono.ttf"
+FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")
 FONT_SMALL = ImageFont.truetype(str(FONT_PATH), 10)
 FONT_NORMAL = ImageFont.truetype(str(FONT_PATH), 12)
 
