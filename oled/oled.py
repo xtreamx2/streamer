@@ -201,6 +201,11 @@ def draw_startup_animation(device):
                 y += 8
         time.sleep(0.1)
 
+def draw_edit_screen(device, state: ScreenState):
+    with canvas(device) as draw:
+        draw.text((0, 0), f"Ustaw: {state.edit_key}", font=FONT_NORMAL, fill=255)
+        draw.text((0, 20), f"{state.edit_value}", font=FONT_NORMAL, fill=255)
+        draw.text((0, 40), "Klik = Zapis", font=FONT_SMALL, fill=255)
 
 def draw_volume_icon(draw, x, y, height, width, volume):
     draw.line((x, y, x, y + height), fill=255)
@@ -278,7 +283,7 @@ def build_menu_structure():
     if not fav_names:
         fav_names = ["(brak ulubionych)"]
     return {
-        "root": ["Ustawienia", "Ulubione stacje", "Stacje radiowe", "Źródło", "ESC"]
+        "root": ["Ustawienia", "Ulubione stacje", "Stacje radiowe", "Źródło", "ESC"],
         "Ustawienia": ["Filtry EQ", "Wygaszacz", "Ekran", "ESC"],
         "Filtry EQ": ["EQ 5-pasmowy", "EQ 2-pasmowy", "ESC"],
         "Wygaszacz": ["Czas do przyciemnienia", "Jasność po przyciemnieniu", "Czas do wygaszenia", "ESC"],
@@ -425,6 +430,9 @@ def play_station_by_name(client: MPDClient | None, name: str):
 def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState, client: MPDClient | None):
     state.last_input_time = time.time()
 
+    if state.mode == "edit":
+        state.edit_value = max(0, min(255, state.edit_value + direction))
+        return
     if state.mode == "main":
         new_vol = max(0, min(100, np.volume + direction))
         if client:
@@ -452,19 +460,48 @@ def handle_menu_action(choice: str, np: NowPlaying, state: ScreenState, settings
         save_json(CONFIG_OLED, settings.__dict__)
     elif choice in [s["name"] for s in get_favorite_stations()]:
         play_station_by_name(client, choice)
+    elif choice in [s["name"] for s in load_radio_stations()]:
+        play_station_by_name(client, choice)
+    elif choice == "Czas do przyciemnienia":
+        state.mode = "edit"
+        state.edit_key = "screensaver_dim_after"
+        state.edit_value = settings.screensaver_dim_after
+        return
 
+    elif choice == "Jasność po przyciemnieniu":
+        state.mode = "edit"
+        state.edit_key = "screensaver_dim_level"
+        state.edit_value = settings.screensaver_dim_level
+        return
+
+    elif choice == "Czas do wygaszenia":
+        state.mode = "edit"
+        state.edit_key = "screensaver_off_after"
+        state.edit_value = settings.screensaver_off_after
+        return
+
+    elif choice == "Jasność domyślna":
+        state.mode = "edit"
+        state.edit_key = "brightness_default"
+        state.edit_value = settings.brightness_default
+        return
 
 def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings, client: MPDClient | None):
     state.last_input_time = time.time()
 
+    if state.mode == "edit":
+        setattr(settings, state.edit_key, state.edit_value)
+        save_json(CONFIG_OLED, settings.__dict__)
+        state.mode = "menu"
+        return
     if state.mode == "main":
-    if client:
-        if np.playing:
-            client.pause(1)
-        else:
-            client.pause(0)
-    np.playing = not np.playing
-    return
+        if client:
+            if np.playing:
+                client.pause(1)
+            else:
+                client.pause(0)
+        np.playing = not np.playing
+        return
 
     items = current_menu_items(state)
     if not items:
@@ -570,8 +607,10 @@ def main():
         # rysowanie ekranu
         if state.mode == "main":
             draw_main_screen(device, np, state)
-        else:
+        elif state.mode == "menu":
             draw_menu(device, state)
+        elif state.mode == "edit":
+            draw_edit_screen(device, state)
 
         time.sleep(1.0 / FPS)
 
@@ -580,4 +619,3 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
