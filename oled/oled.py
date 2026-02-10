@@ -278,11 +278,12 @@ def build_menu_structure():
     if not fav_names:
         fav_names = ["(brak ulubionych)"]
     return {
-        "root": ["Ustawienia", "Ulubione stacje", "Źródło", "ESC"],
+        "root": ["Ustawienia", "Ulubione stacje", "Stacje radiowe", "Źródło", "ESC"]
         "Ustawienia": ["Filtry EQ", "Wygaszacz", "Ekran", "ESC"],
         "Filtry EQ": ["EQ 5-pasmowy", "EQ 2-pasmowy", "ESC"],
         "Wygaszacz": ["Czas do przyciemnienia", "Jasność po przyciemnieniu", "Czas do wygaszenia", "ESC"],
         "Ekran": ["Jasność domyślna", "ESC"],
+        "Stacje radiowe": [s["name"] for s in load_radio_stations()] + ["ESC"],
         "Ulubione stacje": fav_names + ["ESC"],
         "Źródło": ["Radio", "Pliki", "Bluetooth (niedostępne)", "ESC"],
     }
@@ -432,7 +433,6 @@ def on_encoder_rotate(direction: int, np: NowPlaying, state: ScreenState, client
             except:
                 pass
         np.volume = new_vol
-
     elif state.mode == "menu":
         items = current_menu_items(state)
         state.selected_index = max(0, min(len(items) - 1, state.selected_index + direction))
@@ -458,8 +458,13 @@ def on_encoder_click(np: NowPlaying, state: ScreenState, settings: Settings, cli
     state.last_input_time = time.time()
 
     if state.mode == "main":
-        np.playing = not np.playing
-        return
+    if client:
+        if np.playing:
+            client.pause(1)
+        else:
+            client.pause(0)
+    np.playing = not np.playing
+    return
 
     items = current_menu_items(state)
     if not items:
