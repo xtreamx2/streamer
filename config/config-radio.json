@@ -1,0 +1,16 @@
+{
+  "stations": [
+    {
+      "name": "Radio Paradise (FLAC)",
+      "url": "http://stream.radioparadise.com/flac",
+      "favorite": true,
+      "tags": ["hires", "flac"]
+    },
+    {
+      "name": "Example 320k MP3",
+      "url": "http://example.com/stream.mp3",
+      "favorite": false,
+      "tags": ["mp3", "320k"]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "hostname": "streamer v0.010a",
+  "i2s_card": "hifiberry-dac",
+  "bluetooth_enabled": false
+}
