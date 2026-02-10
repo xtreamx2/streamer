@@ -156,6 +156,24 @@ EOF
     log "[oled] plik usługi utworzony" "OK"
 }
 
+    sudo tee /etc/systemd/system/streamer-web.service >/dev/null <<EOF
+[Unit]
+Description=Streamer Web Interface
+After=network.target
+
+[Service]
+User=tom
+WorkingDirectory=/home/tom/streamer/web
+ExecStart=/usr/bin/python3 /home/tom/streamer/web/app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    log "[Web Panel] plik usługi utworzony" "OK"
+}
+
 run_config_scripts() {
     log "[configure_audio] konfiguracja audio (I2S)..." "INFO"
     run_safe "bash <(curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/scripts/configure_audio.sh)"
@@ -185,6 +203,7 @@ restart_all_services() {
         "bluealsa.service"
         "camilladsp.service"
         "oled.service"
+        "streamer-web.service"
     )
 
     for s in "${services[@]}"; do
