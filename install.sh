@@ -179,6 +179,33 @@ detect_oled || true
 detect_bt || true
 detect_wifi || true
 
+log "Instalacja usługi OLED..."
+
+# Tworzenie pliku usługi
+sudo tee /etc/systemd/system/oled.service >/dev/null << 'EOF'
+[Unit]
+Description=OLED Display Service
+After=network.target syslog.target dev-i2c-1.device
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/'"$USER"'/streamer/oled/oled.py
+Restart=always
+User='"$USER"'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Przeładowanie systemd
+sudo systemctl daemon-reload
+
+# Włączenie usługi
+sudo systemctl enable oled.service
+
+log "[OK] Usługa OLED zainstalowana i uruchomiona."
+
+
 log "Restart usług..."
 restart_service_if_exists "mpd.service"
 restart_service_if_exists "bluealsa.service"
