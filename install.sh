@@ -177,6 +177,29 @@ EOF
 
     log "[web] plik usługi utworzony" "OK"
 }
+install_eq_service() {
+    local user_name="$1"
+
+    log "[eq] tworzę usługę systemd..." "INFO"
+
+    sudo tee /etc/systemd/system/streamer-eq.service >/dev/null <<EOF
+[Unit]
+Description=Streamer DSP / EQ Daemon
+After=network.target camilladsp.service
+Requires=camilladsp.service
+
+[Service]
+User=$user_name
+WorkingDirectory=/home/$user_name/streamer
+ExecStart=/usr/bin/python3 /home/$user_name/streamer/audio/dsp.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    log "[eq] plik usługi utworzony" "OK"
+}
 
 run_config_scripts() {
     log "[configure_audio] konfiguracja audio (I2S)..." "INFO"
@@ -208,6 +231,7 @@ restart_all_services() {
         "camilladsp.service"
         "oled.service"
         "streamer-web.service"
+        "eq.service"
     )
 
     for s in "${services[@]}"; do
@@ -252,6 +276,8 @@ if [[ "$MODE" == "1" ]]; then
     install_oled_service "$USER_NAME" "$DEST_DIR"
     install_web_service "$USER_NAME"
 
+    install_eq_service "$user_name"
+
     restart_all_services
 
     log "INSTALACJA ZAKOŃCZONA. Jeśli zmieniano dtoverlay/dtparam, wykonaj reboot." "OK"
@@ -266,6 +292,7 @@ elif [[ "$MODE" == "2" ]]; then
 
     install_oled_service "$USER_NAME" "$DEST_DIR"
     install_web_service "$USER_NAME"
+    install_eq_service "$user_name"
 
     restart_all_services
 
