@@ -231,7 +231,7 @@ restart_all_services() {
         "camilladsp.service"
         "oled.service"
         "streamer-web.service"
-        "eq.service"
+        "streamer-eq.service"
     )
 
     for s in "${services[@]}"; do
