@@ -5,6 +5,14 @@ Wersjonowanie zgodne z `0.xxx` (pre‑alpha).
 
 ---
 
+## [0.011a] - 2026-02-11
+### Dodano
+- EQ
+- Web server na porcie 8080
+
+###
+- nadal problemy z Enkoderem i EQ
+
 ## [0.010a] — 2026‑02‑10
 ### Dodano
 - Utworzono pełną strukturę projektu (`audio/`, `ui/`, `hardware/`, `utils/`, `scripts/`).

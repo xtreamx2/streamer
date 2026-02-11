@@ -1,5 +1,5 @@
 {
-  "mode": "preset",          // preset / custom2 / custom5
+  "mode": "preset",
   "selected_preset": "ROCK",
 
   "custom2_profiles": {
