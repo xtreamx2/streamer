@@ -276,7 +276,7 @@ if [[ "$MODE" == "1" ]]; then
     install_oled_service "$USER_NAME" "$DEST_DIR"
     install_web_service "$USER_NAME"
 
-    install_eq_service "$user_name"
+    install_eq_service "$USER_NAME"
 
     restart_all_services
 
@@ -292,7 +292,7 @@ elif [[ "$MODE" == "2" ]]; then
 
     install_oled_service "$USER_NAME" "$DEST_DIR"
     install_web_service "$USER_NAME"
-    install_eq_service "$user_name"
+    install_eq_service "$USER_NAME"
 
     restart_all_services
 
