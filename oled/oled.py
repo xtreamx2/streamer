@@ -410,7 +410,6 @@ def update_now_playing_from_mpd(client: MPDClient | None, np: NowPlaying):
     except Exception:
         pass
 
-
 def play_station_by_name(client: MPDClient | None, name: str):
     if client is None:
         return
@@ -418,13 +417,13 @@ def play_station_by_name(client: MPDClient | None, name: str):
     for s in stations:
         if s["name"] == name:
             try:
+                client.stop()
                 client.clear()
                 client.add(s["url"])
                 client.play()
             except Exception:
                 pass
             break
-
 
 # ================== ENKODER ==================
 
