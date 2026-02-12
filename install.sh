@@ -19,8 +19,9 @@ cp camilladsp /usr/local/bin/
 chmod +x /usr/local/bin/camilladsp
 
 echo "=== Instalacja bibliotek do I2C, OLED, GPIO ==="
-apt install -y python3 python3-pip python3-smbus i2c-tools
-pip3 install --break-system-packages RPi.GPIO adafruit-circuitpython-ssd1306
+echo "=== Instalacja bibliotek do I2C, OLED, GPIO ==="
+apt install -y python3 python3-pip python3-smbus i2c-tools python3-rpi.gpio
+pip3 install --break-system-packages adafruit-circuitpython-ssd1306
 
 echo "=== Tworzenie katalogów projektu ==="
 mkdir -p /opt/streamer
