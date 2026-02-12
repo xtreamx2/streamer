@@ -13,13 +13,14 @@ echo "=== Instalacja Snapcast (opcjonalnie) ==="
 
 echo "=== Instalacja CamillaDSP (Rust) ==="
 wget https://github.com/HEnquist/camilladsp/releases/latest/download/camilladsp-linux-aarch64.tar.gz
+rm -f camilladsp
 tar xvf camilladsp-linux-aarch64.tar.gz
 cp camilladsp /usr/local/bin/
 chmod +x /usr/local/bin/camilladsp
 
 echo "=== Instalacja bibliotek do I2C, OLED, GPIO ==="
 apt install -y python3 python3-pip python3-smbus i2c-tools
-pip3 install RPi.GPIO adafruit-circuitpython-ssd1306
+pip3 install --break-system-packages RPi.GPIO adafruit-circuitpython-ssd1306
 
 echo "=== Tworzenie katalogów projektu ==="
 mkdir -p /opt/streamer
