@@ -28,7 +28,7 @@ echo "=== Pobieranie plików projektu z GitHub ==="
 if [ ! -d /opt/streamer/.git ]; then
     echo "Klonuję repozytorium..."
     rm -rf /opt/streamer   # na wszelki wypadek, gdyby istniał pusty katalog
-    git clone https://github.com/xtreamx2/streamer.git /opt/streamer
+    git clone --branch triple https://github.com/xtreamx2/streamer.git /opt/streamer
 else
     echo "Repozytorium istnieje — aktualizuję..."
     git -C /opt/streamer pull
