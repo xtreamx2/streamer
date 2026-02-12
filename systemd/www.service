@@ -1,0 +1,10 @@
+[Unit]
+Description=Streamer Web UI
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/streamer/www/server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

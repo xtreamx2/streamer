@@ -1,0 +1,10 @@
+[Unit]
+Description=CamillaDSP
+After=network.target sound.target
+
+[Service]
+ExecStart=/usr/local/bin/camilladsp -c /opt/streamer/dsp/config.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
