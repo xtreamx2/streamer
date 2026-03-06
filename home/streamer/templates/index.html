@@ -64,6 +64,7 @@
   
   <div class="card">
     <h3 id="track-info">Ładowanie...</h3>
+    <div id="stream-params" style="opacity:0.85; font-size:0.95em; margin-top:0.4em;"></div>
     <div>
       <button onclick="control('play')">▶</button>
       <button onclick="control('pause')">▮▮</button>
@@ -105,13 +106,16 @@
         <h4>⚙️ Equalizer (CamillaDSP)</h4>
         <hr>
 
-        <!-- Lista generowana dynamicznie -->
-        <div id="eq-sliders-list" style="display: flex; flex-direction: column; gap: 10px;">
-            <small>Dodajemy filtry...</small>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+          <button id="eq-mode-tone" class="tab active" onclick="setEqMode('tone')">Tone</button>
+          <button id="eq-mode-eq" class="tab" onclick="setEqMode('eq')">EQ (5-band)</button>
+          <span id="loudness-wrap" style="margin-left:auto; display:none; align-items:center; gap:8px;">
+            <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+              <input id="loudness-toggle" type="checkbox" />
+              Loudness
+            </label>
+          </span>
         </div>
-
-        <button onclick="applyEq()" class="btn btn-primary mt-3">💾 Zastosuj zmiany</button>
-    </div>
 
         <!-- Lista generowana dynamicznie -->
         <div id="eq-sliders-list" style="display: flex; flex-direction: column; gap: 10px;">
@@ -157,6 +161,17 @@ let vuBands = 32;  // 32 bands per channel (display)
 let allStations = [];
 let currentTab = 'all';
 let vuMode = 'vu';  // 'vu' or 'spectrum'
+let eqMode = 'tone'; // 'tone' or 'eq'
+let _allEqFilters = [];
+
+function setEqMode(mode) {
+  eqMode = mode === 'eq' ? 'eq' : 'tone';
+  document.getElementById('eq-mode-tone').classList.toggle('active', eqMode === 'tone');
+  document.getElementById('eq-mode-eq').classList.toggle('active', eqMode === 'eq');
+  // Switch CamillaDSP pipeline mode
+  fetch(`/api/camilla/mode/${encodeURIComponent(eqMode)}`, {method: 'POST'}).catch(()=>{});
+  renderEqFilters();
+}
 
 // Init VU bars - HORIZONTAL, 32 bands per channel
 const vu = document.getElementById('vu');
@@ -178,6 +193,16 @@ async function updateStatus() {
   const d = await r.json();
   document.getElementById('track-info').innerHTML = `<strong>${d.state.toUpperCase()}</strong><br>${d.title}${d.artist ? '<br><small>'+d.artist+'</small>' : ''}`;
   document.getElementById('vol-val').textContent = d.volume;
+  const params = [];
+  if (d.audio && d.audio.rate) params.push(`${d.audio.rate} Hz`);
+  if (d.audio && d.audio.bits) params.push(`${d.audio.bits}-bit`);
+  if (d.bitrate_kbps) params.push(`${d.bitrate_kbps} kb/s`);
+  if (d.file) {
+    const ext = (d.file.split('?')[0].split('.').pop() || '').toUpperCase();
+    if (ext && ext.length <= 6) params.push(ext);
+  }
+  if (d.quality) params.push(d.quality);
+  document.getElementById('stream-params').textContent = params.length ? ('Parametry: ' + params.join(' • ')) : '';
 }
 setInterval(updateStatus, 2000);
 
@@ -262,85 +287,83 @@ function showTab(tab) {
   loadStations();
 }
 
-// === JS: Aktualizacja wartości suwaków (obrazek tekstu) ===
-function setupSliders() {
-    const bands = ['bass', 'low-mid', 'mid', 'high-mid', 'treble'];
-    bands.forEach(band => {
-        const input = document.getElementById(band);
-        const output = document.getElementById(band + '-val');
-        input.addEventListener('input', () => {
-            const val = parseFloat(input.value);
-            // Wyświetlanie '+X' lub '-X' dB
-            const sign = val >= 0 ? '+' : '';
-            output.textContent = sign + val.toFixed(1) + ' dB';
-            output.classList.toggle('negative', val < 0);
-        });
-    });
-}
-
-// === JS: Wyślij wartość EQ do servera ===
-async function applyEq() {
-    const bands = ['bass', 'low-mid', 'mid', 'high-mid', 'treble'];
-    for (let band of bands) {
-        const input = document.getElementById(band);
-        const val = input.value;
-        try {
-            await fetch('/api/eq/' + band.replace(/-/g,'_'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({gain: val})
-            });
-        } catch(e) { console.log('EQ error:', e); }
-    }
-    alert('✅ Równoważenie dźwięku zastosowane!');
-}
-
 async function loadEqFilters() {
     const container = document.getElementById('eq-sliders-list');
     
     try {
         const response = await fetch('/api/eq/list');
         const filters = await response.json();
+        _allEqFilters = Array.isArray(filters) ? filters : [];
         
-        if (filters.length === 0) {
+        if (_allEqFilters.length === 0) {
             container.innerHTML = '<small style="color:#dc3545">Brak filtrów EQ w konfiguracji.</small>';
             return;
         }
-        
-        let html = '';
-        
-        filters.forEach(f => {
-            // Formatowanie wartości + lub - dB
-            const sign = f.current_gain >= 0 ? '+' : '';
-            const displayVal = sign + Math.abs(f.current_gain).toFixed(1);
-            const negativeClass = f.current_gain < 0 ? 'negative' : '';
-            
-            html += `
-                <div class="eq-row" data-filter="${f.name}">
-                    <label class="eq-label">${f.name}</label>
-                    <input type="range" id="${f.name}" class="eq-slider" min="-10" max="10" value="${f.current_gain}" step="0.5">
-                    <span id="${f.name}-val" class="eq-value ${negativeClass}">${displayVal} dB</span>
-                </div>`;
-        });
-        
-        container.innerHTML = html;
-        
-        // Obsługa zdarzeń input
-        filters.forEach(f => {
-            const input = document.getElementById(f.name);
-            const output = document.getElementById(`${f.name}-val`);
-            
-            input.addEventListener('input', () => {
-                const val = parseFloat(input.value);
-                const sign = val >= 0 ? '+' : '';
-                output.textContent = sign + Math.abs(val).toFixed(1) + ' dB';
-                output.classList.toggle('negative', val < 0);
-            });
-        });
+
+        // Loudness toggle (if exists as gain filter)
+        const loud = _allEqFilters.find(f => (f.name || '').toLowerCase() === 'loudness');
+        const loudWrap = document.getElementById('loudness-wrap');
+        const loudToggle = document.getElementById('loudness-toggle');
+        if (loud) {
+          loudWrap.style.display = 'flex';
+          loudToggle.checked = (parseFloat(loud.current_gain) || 0) > 0.1;
+        } else {
+          loudWrap.style.display = 'none';
+        }
+
+        renderEqFilters();
         
     } catch (e) {
         container.innerHTML = '<small>Error loading EQ.</small>';
     }
+}
+
+function renderEqFilters() {
+    const container = document.getElementById('eq-sliders-list');
+    if (!container) return;
+
+    const isTone = (f) => ['bass','treble'].includes((f.name || '').toLowerCase());
+    const isLoud = (f) => ((f.name || '').toLowerCase() === 'loudness');
+
+    const visible = _allEqFilters
+      .filter(f => !isLoud(f))
+      .filter(f => (eqMode === 'tone' ? isTone(f) : !isTone(f)));
+
+    if (visible.length === 0) {
+      container.innerHTML = '<small style="opacity:0.8">Brak filtrów dla tego trybu.</small>';
+      return;
+    }
+
+    let html = '';
+    visible.forEach(f => {
+        const gain = parseFloat(f.current_gain) || 0;
+        const sign = gain >= 0 ? '+' : '';
+        const displayVal = sign + Math.abs(gain).toFixed(1);
+        const negativeClass = gain < 0 ? 'negative' : '';
+        const safeId = String(f.name).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        html += `
+            <div class="eq-row" data-filter="${f.name}">
+                <label class="eq-label">${f.name}</label>
+                <input type="range" id="${safeId}" class="eq-slider" min="-10" max="10" value="${gain}" step="0.5">
+                <span id="${safeId}-val" class="eq-value ${negativeClass}">${displayVal} dB</span>
+            </div>`;
+    });
+
+    container.innerHTML = html;
+
+    visible.forEach(f => {
+        const safeId = String(f.name).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const input = document.getElementById(safeId);
+        const output = document.getElementById(`${safeId}-val`);
+        if (!input || !output) return;
+        input.addEventListener('input', () => {
+            const val = parseFloat(input.value);
+            const sign = val >= 0 ? '+' : '';
+            output.textContent = sign + Math.abs(val).toFixed(1) + ' dB';
+            output.classList.toggle('negative', val < 0);
+        });
+    });
 }
 
 async function applyEq() {
@@ -349,7 +372,8 @@ async function applyEq() {
     
     for (let row of rows) {
         const filterName = row.getAttribute('data-filter');
-        const input = document.getElementById(filterName);
+        const safeId = String(filterName).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const input = document.getElementById(safeId);
         const val = input.value;
         
         promises.push(fetch(`/api/eq/${encodeURIComponent(filterName)}`, {
@@ -357,6 +381,18 @@ async function applyEq() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({gain: val})
         }).catch(e => console.log(`EQ error for ${filterName}:`, e)));
+    }
+
+    // Loudness toggle (if present)
+    const loudWrap = document.getElementById('loudness-wrap');
+    if (loudWrap && loudWrap.style.display !== 'none') {
+      const enabled = document.getElementById('loudness-toggle').checked;
+      const loudName = 'loudness';
+      promises.push(fetch(`/api/eq/${encodeURIComponent(loudName)}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({gain: enabled ? 6.0 : 0.0})
+      }).catch(e => console.log('Loudness error:', e)));
     }
     
     await Promise.all(promises);
@@ -394,6 +430,41 @@ async function loadAudioSources() {
     }
 }
 
+async function loadAudioInputs() {
+    // Optional: list input sources (line-in / BT receiver source)
+    const container = document.getElementById('audio-sinks-list');
+    try {
+        const response = await fetch('/api/audio-sources');
+        const sources = await response.json();
+        if (!Array.isArray(sources) || sources.length === 0) return;
+
+        // Append a simple line of input buttons under the outputs list
+        const wrap = document.createElement('div');
+        wrap.style.marginTop = '12px';
+        wrap.style.display = 'flex';
+        wrap.style.flexWrap = 'wrap';
+        wrap.style.gap = '10px';
+
+        const label = document.createElement('div');
+        label.textContent = 'Wejścia (line-in):';
+        label.style.width = '100%';
+        label.style.opacity = '0.8';
+        wrap.appendChild(label);
+
+        sources.forEach((src, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'source-btn';
+            btn.textContent = (src.type === 'bt' ? '🎧 ' : '🎙️ ') + (src.name || src.id || ('source-' + i));
+            btn.onclick = () => setInputSource(src.id);
+            wrap.appendChild(btn);
+        });
+
+        container.appendChild(wrap);
+    } catch (e) {
+        // ignore
+    }
+}
+
 function getBTIcon(name) {
     return '🎵 ' + (name.length > 10 ? name.substring(0, 10) + '..' : name);
 }
@@ -408,6 +479,20 @@ async function setSource(source) {
             reloadSources(); // Odśwież listę po zmianie
         } else {
             alert('❌ Błąd zmiany źródła: ' + json.error);
+        }
+    } catch (e) {
+        alert('❌ Błąd połączenia: ' + e);
+    }
+}
+
+async function setInputSource(sourceId) {
+    try {
+        const res = await fetch(`/api/source-input/set/${encodeURIComponent(sourceId)}`, {method: 'POST'});
+        const json = await res.json();
+        if (json.status === 'success') {
+            alert(`✅ Wejście ustawione na: ${json.current}`);
+        } else {
+            alert('❌ Błąd zmiany wejścia: ' + json.error);
         }
     } catch (e) {
         alert('❌ Błąd połączenia: ' + e);
@@ -460,15 +545,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) document.documentElement.setAttribute('data-theme', saved);
   updateStatus();
   loadStations();
+  loadEqFilters();
+  loadAudioSources();
+  loadAudioInputs();
   // Request initial VU data
   socket.emit('vu_request', {mode: vuMode});
-});
-
-
-// Inicjalizacja przy starcie strony
-document.addEventListener('DOMContentLoaded', () => {
-    setupSliders();
-    loadAudioSources(); // Wywołanie listy źródeł
 });
 </script>
 </body>

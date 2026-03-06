@@ -12,17 +12,23 @@ import re
 import mpd
 import time
 import numpy as np
+from typing import Optional, Dict, Any
 from radio_handler import (
     load_stations, save_stations, add_station, remove_station,
     get_enabled_stations, get_favorites, get_station_by_id,
     toggle_favorite
 )
+from vu_handler import get_vu_data
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 mpd_client = None
 
+# Używamy realnego systemowego configu Camilli z maliny.
 CAMILLA_CONFIG = '/etc/camilladsp/config.yml'
+
+# Per-client VU mode (Socket.IO sid -> 'vu' | 'spectrum')
+_client_vu_mode: Dict[str, str] = {}
 
 # ===== FUNCJE POMOCNICZE =====
 def get_available_filters():
@@ -39,52 +45,42 @@ def get_available_filters():
                     if 'parameters' in data['filters'][name] and 'gain' in data['filters'][name]['parameters']:
                         current_gain = float(data['filters'][name]['parameters']['gain'])
                     filters.append({'name': name, 'current_gain': current_gain})
-        return sorted(filters, key=lambda x: ['bass', 'treble'].index(x['name']) if x['name'] in ['bass', 'treble'] else 1)
+        def _sort_key(item):
+            n = item["name"]
+            if n == "bass":
+                return (0, n)
+            if n == "treble":
+                return (1, n)
+            return (2, n)
+        return sorted(filters, key=_sort_key)
     except Exception as e:
         print(f"Error reading filters: {e}")
         return []
 
-def update_eq_yaml(filter_name, gain):
-    """Tylko zmienia gain konkretnego filtra, nie nadpisuje reszty pliku."""
+def update_eq_yaml(filter_name: str, gain: float) -> bool:
+    """Zmienia gain filtra w YAML i zapisuje config.
+
+    Uwaga: zapis przez YAML może zmienić formatowanie pliku, ale jest stabilny
+    i dużo mniej podatny na błędy niż manipulacja tekstem.
+    """
     try:
-        with open(CAMILLA_CONFIG, 'r') as f:
-            content = f.read()
+        with open(CAMILLA_CONFIG, "r") as f:
+            config = yaml.safe_load(f) or {}
 
-        import re
-        # Szukamy wzoru: gain: <wartość>
-        pattern = rf"(?<=^.{20})gain:\s*[\d.-]+"
-
-        # Sprawdzamy czy filtr istnieje w pliku
-        if f"{filter_name}:" not in content:
+        filters = config.get("filters")
+        if not isinstance(filters, dict) or filter_name not in filters:
             print(f"Filter '{filter_name}' not found!")
             return False
 
-        # Modyfikujemy wartość gain dla danego filtra
-        lines = content.split('\n')
-        in_target_filter = False
-        new_lines = []
+        params = filters.get(filter_name, {}).get("parameters")
+        if not isinstance(params, dict):
+            filters[filter_name]["parameters"] = {}
+            params = filters[filter_name]["parameters"]
 
-        for line in lines:
-            stripped = line.strip()
+        params["gain"] = float(gain)
 
-            # Czy to początek naszego filtra?
-            if stripped.rstrip(':') == filter_name + ':' or stripped == f'{filter_name}:':
-                in_target_filter = True
-
-            # Jeśli w naszym filtrze i widzimy linię gain
-            if in_target_filter and stripped.startswith('gain:'):
-                # Pobierz indentation
-                indent = line[:len(line) - len(stripped)]
-                new_line = f"{indent}gain: {gain}"
-                new_lines.append(new_line)
-                in_target_filter = False  # Koniec filtra
-                continue
-
-            new_lines.append(line)
-
-        # Zapisz
-        with open(CAMILLA_CONFIG, 'w') as f:
-            f.write('\n'.join(new_lines))
+        with open(CAMILLA_CONFIG, "w") as f:
+            yaml.safe_dump(config, f, sort_keys=False)
 
         return True
 
@@ -95,6 +91,7 @@ def update_eq_yaml(filter_name, gain):
 def restart_camilladsp():
     """Restart usługi CamillaDSP po zmianie konfiguracji."""
     try:
+        # Prefer systemd service if present; fallback to restarting process is handled elsewhere.
         subprocess.run(['sudo', 'systemctl', 'restart', 'camilladsp'], check=True, capture_output=True)
         return True
     except Exception as e:
@@ -123,7 +120,7 @@ def get_mpd():
         return None
 
 def get_audio_sinks():
-    """Pobiera listę wszystkich dostępnych wyjść audio."""
+    """Pobiera listę wszystkich dostępnych wyjść audio (PulseAudio sinks)."""
     try:
         output = subprocess.check_output(['pactl', 'list', 'short', 'sinks']).decode('utf-8')
         sinks = []
@@ -140,50 +137,54 @@ def get_audio_sinks():
         print(f"Błąd pobierania listy sinków: {e}")
         return []
 
-# ===== VU METER SKELETON =====
-class VUMeter:
-    def __init__(self, bands=32, attack_ms=50, decay_ms=200, peak_hold_s=1.5):
-        self.bands = bands
-        self.attack_coef = np.exp(-1/(attack_ms/1000 * 20))
-        self.decay_coef = np.exp(-1/(decay_ms/1000 * 20))
-        self.peak_decay = 1/(peak_hold_s * 20)
-        self.levels = np.zeros(bands)
-        self.peaks = np.zeros(bands)
-        self.peak_timers = np.zeros(bands)
+def get_audio_sources():
+    """Pobiera listę źródeł audio (PulseAudio sources) – przydatne dla 'line-in' (np. BT receiver)."""
+    try:
+        output = subprocess.check_output(['pactl', 'list', 'short', 'sources']).decode('utf-8')
+        sources = []
+        for line in output.strip().split('\n'):
+            if line:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    name = parts[1].strip() if len(parts) > 1 else ""
+                    desc = parts[2].strip()
+                    state = parts[4].strip() if len(parts) > 4 else "unknown"
+                    if desc and "monitor" not in desc.lower():
+                        sources.append({
+                            "name": desc,
+                            "id": name,
+                            "state": state,
+                            "type": "bt" if "bluez" in desc.lower() or "bluez" in name.lower() else "other"
+                        })
+        return sources
+    except Exception as e:
+        print(f"Błąd pobierania listy sources: {e}")
+        return []
 
-    def update(self, amplitudes):
-        amplitudes = np.clip(amplitudes, -60, 0)
-        for i in range(self.bands):
-            if amplitudes[i] > self.levels[i]:
-                self.levels[i] = self.levels[i] * self.attack_coef + amplitudes[i] * (1 - self.attack_coef)
-            else:
-                self.levels[i] = self.levels[i] * self.decay_coef + amplitudes[i] * (1 - self.decay_coef)
-            if amplitudes[i] > self.peaks[i]:
-                self.peaks[i] = amplitudes[i]
-                self.peak_timers[i] = 0
-            else:
-                self.peak_timers[i] += 1/20
-                if self.peak_timers[i] >= 1.5:
-                    self.peaks[i] = max(self.peaks[i] - 0.5, self.levels[i])
-        return self.levels.copy(), self.peaks.copy()
+def _parse_mpd_audio_field(audio: Optional[str]) -> Dict[str, Optional[int]]:
+    # MPD status["audio"] often looks like: "44100:16:2" (rate:bits:channels)
+    if not audio or not isinstance(audio, str):
+        return {"rate": None, "bits": None, "channels": None}
+    parts = audio.split(":")
+    if len(parts) != 3:
+        return {"rate": None, "bits": None, "channels": None}
+    try:
+        return {"rate": int(parts[0]), "bits": int(parts[1]), "channels": int(parts[2])}
+    except ValueError:
+        return {"rate": None, "bits": None, "channels": None}
 
-    def interpolate_to_64(self, levels_32):
-        result = []
-        for i in range(len(levels_32)):
-            result.append(levels_32[i])
-            if i < len(levels_32) - 1:
-                result.append((levels_32[i] + levels_32[i+1]) / 2)
-        return np.array(result)
-
-vu_meter = VUMeter(bands=32)
-
-def get_vu_data(mode='vu'):
-    import random
-    amplitudes = np.array([random.uniform(-60, -6) for _ in range(32)])
-    levels, peaks = vu_meter.update(amplitudes)
-    levels_64 = vu_meter.interpolate_to_64(levels)
-    peaks_64 = vu_meter.interpolate_to_64(peaks)
-    return {"vu_l": levels_64[:32].tolist(), "vu_r": levels_64[32:].tolist(), "peak_l": peaks_64[:32].tolist(), "peak_r": peaks_64[32:].tolist(), "timestamp": time.time()}
+def _quality_label(rate: Optional[int], bits: Optional[int], bitrate: Optional[int], codec_hint: str = "") -> str:
+    # Very simple heuristic
+    if (rate or 0) >= 88200 or (bits or 0) >= 24:
+        return "Hi-Res"
+    # Lossless streams often have high bitrate even at 44.1kHz
+    if bitrate and bitrate >= 800:
+        return "Lossless"
+    if bitrate and bitrate >= 320:
+        return "HQ"
+    if "flac" in codec_hint.lower():
+        return "Lossless"
+    return "Standard"
 
 # ===== ROUTES =====
 @app.route('/')
@@ -209,10 +210,66 @@ def api_set_eq(filter_name):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+def _set_camilla_pipeline_mode(mode: str) -> bool:
+    """Przełącza pipeline na 'tone' albo 'eq' (5-band).
+
+    tone: bass + treble (+ loudness jeśli istnieje)
+    eq: eq1..eq5 (+ loudness jeśli istnieje)
+    """
+    mode = "eq" if mode == "eq" else "tone"
+    with open(CAMILLA_CONFIG, "r") as f:
+        config = yaml.safe_load(f) or {}
+
+    pipeline = config.get("pipeline")
+    if not isinstance(pipeline, list) or len(pipeline) == 0:
+        return False
+
+    # Find first Filter stage (common layout)
+    stage = None
+    for st in pipeline:
+        if isinstance(st, dict) and st.get("type") == "Filter":
+            stage = st
+            break
+    if stage is None:
+        return False
+
+    names = []
+    if mode == "tone":
+        names = ["bass", "treble"]
+    else:
+        names = ["eq1", "eq2", "eq3", "eq4", "eq5"]
+
+    filters = config.get("filters") if isinstance(config.get("filters"), dict) else {}
+    if isinstance(filters, dict) and "loudness" in filters:
+        names.append("loudness")
+
+    stage["names"] = names
+
+    with open(CAMILLA_CONFIG, "w") as f:
+        yaml.safe_dump(config, f, sort_keys=False)
+    return True
+
+@app.route('/api/camilla/mode/<mode>', methods=['POST'])
+def api_set_camilla_mode(mode):
+    """Przełącza tryb CamillaDSP: tone vs eq."""
+    try:
+        if not _set_camilla_pipeline_mode(mode):
+            return jsonify({"error": "Nie udało się przełączyć pipeline"}), 500
+        if not restart_camilladsp():
+            return jsonify({"error": "Błąd restartu CamillaDSP"}), 500
+        return jsonify({"status": "success", "mode": "eq" if mode == "eq" else "tone"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/audio-sinks', methods=['GET'])
 def api_get_sink_list():
     """API do pobrania listy aktywnych głośników/słuchawek."""
     return jsonify(get_audio_sinks())
+
+@app.route('/api/audio-sources', methods=['GET'])
+def api_get_source_list():
+    """API do pobrania listy źródeł wejściowych."""
+    return jsonify(get_audio_sources())
 
 @app.route('/api/source/set/<sink_name>', methods=['POST'])
 def api_set_sink(sink_name):
@@ -224,6 +281,15 @@ def api_set_sink(sink_name):
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Błąd zmiany źródła: {str(e)}"}), 500
 
+@app.route('/api/source-input/set/<source_id>', methods=['POST'])
+def api_set_source(source_id):
+    """Ustaw dane wejście jako domyślne source."""
+    try:
+        subprocess.run(['pactl', 'set-default-source', source_id], check=True, capture_output=True)
+        return jsonify({"status": "success", "current": source_id})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Błąd zmiany wejścia: {str(e)}"}), 500
+
 @app.route('/api/status')
 def api_status():
     try:
@@ -232,12 +298,24 @@ def api_status():
             return jsonify({"error": "MPD connection failed"}), 503
         status = client.status()
         song = client.currentsong()
+        audio = _parse_mpd_audio_field(status.get("audio"))
+        bitrate = None
+        try:
+            bitrate = int(status.get("bitrate")) if status.get("bitrate") is not None else None
+        except (TypeError, ValueError):
+            bitrate = None
+        file_field = song.get("file", "") or ""
+        quality = _quality_label(audio.get("rate"), audio.get("bits"), bitrate, codec_hint=file_field)
         return jsonify({
             "state": status.get("state", "stop"),
             "title": song.get("title", song.get("name", "Brak tytułu")),
             "artist": song.get("artist", ""),
             "volume": int(status.get("volume", 50)),
-            "playlist_length": int(status.get("playlistlength", 0))
+            "playlist_length": int(status.get("playlistlength", 0)),
+            "audio": audio,
+            "bitrate_kbps": bitrate,
+            "file": file_field,
+            "quality": quality
         })
     except Exception as e:
         global mpd_client
@@ -283,14 +361,40 @@ def api_get_stations():
     favorites = [s["id"] for s in get_favorites()]
     return jsonify({"stations": stations, "favorites": favorites})
 
+@app.route('/api/radio/station', methods=['POST'])
+def api_add_station():
+    """Dodaje stację do JSON."""
+    try:
+        payload = request.get_json(force=True) or {}
+        name = (payload.get("name") or "").strip()
+        url = (payload.get("url") or "").strip()
+        genre = (payload.get("genre") or "").strip()
+        if not name or not url:
+            return jsonify({"error": "Missing name or url"}), 400
+        station_id = add_station(name=name, url=url, genre=genre)
+        return jsonify({"status": "created", "id": station_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/radio/favorite/<station_id>', methods=['POST'])
+def api_toggle_favorite(station_id):
+    """Dodaje/usuwa z ulubionych."""
+    try:
+        payload = request.get_json(force=True) or {}
+        add = bool(payload.get("add", True))
+        toggle_favorite(station_id, add=add)
+        return jsonify({"status": "ok", "id": station_id, "favorite": add})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/radio/station/<station_id>', methods=['POST'])
 def api_play_radio(station_id):
     station = get_station_by_id(station_id)
     if not station:
         return jsonify({"error": "Not found"}), 404
     try:
-        import subprocess
-        result = subprocess.run(["/home/tom/streamer/radio_play.sh", station["url"], "10"], capture_output=True, text=True)
+        script_path = os.path.join(os.path.dirname(__file__), "radio_play.sh")
+        result = subprocess.run([script_path, station["url"], "10"], capture_output=True, text=True)
         if result.returncode != 0:
             return jsonify({"error": result.stderr}), 500
         return jsonify({"status": "playing", "name": station["name"]})
@@ -314,16 +418,29 @@ def api_vu():
 def ws_vu_request(data=None):
     """WebSocket VU data stream with mode support"""
     mode = (data or {}).get('mode', 'vu')
-    emit('vu_data', get_vu_data(mode=mode))
+    sid = request.sid
+    _client_vu_mode[sid] = mode if mode in ("vu", "spectrum") else "vu"
+    emit('vu_data', get_vu_data(mode=_client_vu_mode[sid]))
 
 @socketio.on('connect')
 def ws_connect():
+    _client_vu_mode[request.sid] = "vu"
     emit('vu_init', {"status": "connected"})
+
+@socketio.on('disconnect')
+def ws_disconnect():
+    _client_vu_mode.pop(request.sid, None)
 
 def vu_background_task():
     while True:
         socketio.sleep(0.05)
-        socketio.emit('vu_data', get_vu_data())
+        # Emit per-client with their selected mode
+        for sid, mode in list(_client_vu_mode.items()):
+            try:
+                socketio.emit('vu_data', get_vu_data(mode=mode), to=sid)
+            except Exception:
+                # If a client disappeared, remove it lazily
+                _client_vu_mode.pop(sid, None)
 
 from threading import Thread
 Thread(target=vu_background_task, daemon=True).start()
