@@ -1,0 +1,4 @@
+version: 0.1
+pipeline:
+  - type: Gain
+    gain: 0

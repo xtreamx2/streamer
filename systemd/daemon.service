@@ -1,0 +1,10 @@
+[Unit]
+Description=Streamer Hardware Daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/streamer/daemon/main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
