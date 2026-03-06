@@ -1,0 +1,36 @@
+{
+  "stations": [
+    {
+      "name": "FIP \u00c9lectro",
+      "url": "https://icecast.radiofrance.fr/fipelectro-midfi.mp3",
+      "favorite": true,
+      "tags": [
+        "electronic",
+        "aac"
+      ]
+    },
+    {
+      "name": "FIP Groove",
+      "url": "https://icecast.radiofrance.fr/fipgroove-midfi.mp3",
+      "favorite": false,
+      "tags": [
+        "groove",
+        "aac"
+      ]
+    },
+    {
+      "name": "Dance Classics Radio",
+      "url": "http://vriezenet.nl:11051/dcflac",
+      "favorite": false,
+      "tags": [
+        "Classic Dance"
+      ]
+    },
+    {
+      "name": "TNM Radio",
+      "url": "http://stream.tnm-radio.eu/ultra",
+      "favorite": false,
+      "tags": []
+    }
+  ]
+}

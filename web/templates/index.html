@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Streamer – Stacje radiowe</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: auto; }
+        a { text-decoration: none; }
+        .station { padding: 8px; border-bottom: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+
+<h2>Stacje radiowe</h2>
+
+{% for s in stations %}
+<div class="station">
+    <b>{{ s.name }}</b><br>
+    <a href="/play/{{ s.name }}">▶ Play</a> |
+    <a href="/edit/{{ s.name }}">✎ Edytuj</a> |
+    <a href="/delete/{{ s.name }}">🗑 Usuń</a>
+    {% if s.favorite %} ⭐{% endif %}
+</div>
+{% endfor %}
+
+<p><a href="/add">➕ Dodaj stację</a></p>
+
+<h2>Odtwarzacz</h2>
+
+<p>Status: {{ status.state }}</p>
+<p>Aktualnie: {{ status.title }}</p>
+<p>Głośność: {{ status.volume }}%</p>
+
+<a href="/stop">⏹ Stop</a>
+
+</body>
+</html>

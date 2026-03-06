@@ -61,6 +61,7 @@ Projekt jest rozwijany z naciskiem na:
 ### Instalacja przez `curl`
 
 ```bash
+<<<<<<< HEAD
 curl -sL https://raw.githubusercontent.com/aloisy/streamer/master/start_install.sh | bash
 ```
 ```
@@ -78,6 +79,36 @@ streamer/
  ├── change_log
  └── README.md
 ```
+=======
+curl -s https://raw.githubusercontent.com/xtreamx2/streamer/Second/install.sh | bash | tee install.log
+chmod +x install.sh
+./install.sh
+
+
+/streamer
+│
+├── main.py              # główny loop
+├── config.py            # ustawienia
+│
+├── audio/
+│   ├── player.py        # MPD/Spotify/BT/Radio
+│   ├── dsp.py           # EQ, loudness, filtry (CamillaDSP/ALSA)
+│   └── volume.py        # głośność (PCM5122 + soft)
+│
+├── ui/
+│   ├── display.py       # OLED
+│   ├── menu.py          # logika menu
+│   └── encoder.py       # enkoder + przyciski
+│
+├── hardware/
+│   ├── relays.py        # przekaźniki/tyrystory
+│   ├── rtc.py           # DS3231 (później)
+│   └── power.py         # standby, mute, itp.
+│
+└── utils/
+└── logger.py        # logi
+
+>>>>>>> Second
 
 Projekt składa się z trzech warstw licencyjnych:
 
@@ -118,7 +149,7 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://gitlab.com/aloisy/streamer.git
+git remote add origin https://raw.githubusercontent.com/xtreamx2/streamer/Second/install.sh
 git branch -M main
 git push -uf origin main
 ```
