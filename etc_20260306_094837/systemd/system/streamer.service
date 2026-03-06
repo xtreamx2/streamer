@@ -1,0 +1,15 @@
+[Unit]
+Description=Tom's Streamer Flask App
+After=network.target mpd.service
+Wants=mpd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/tom/streamer/app.py
+WorkingDirectory=/home/tom/streamer
+Restart=always
+User=tom
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

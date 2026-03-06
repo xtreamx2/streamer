@@ -1,0 +1,48 @@
+{
+  "version": "1.1",
+  "stations": [
+    {
+      "id": "rmffm",
+      "name": "RMF FM",
+      "url": "https://rs102-krk.rmfstream.pl/RMFFM48",
+      "genre": "pop",
+      "enabled": true
+    },
+    {
+      "id": "tokfm",
+      "name": "TOK FM",
+      "url": "https://stream.tokfm.pl/tokfm.mp3",
+      "genre": "news",
+      "enabled": true
+    },
+    {
+      "id": "TrancePulse",
+      "name": "TrancePulse",
+      "url": "http://stream.trance.ie:8000/tpmixes",
+      "genre": "Trance",
+      "enabled": true
+    },
+    {
+      "id": "Radio Club Trance",
+      "name": "Radio Club Trance",
+      "url": "https://stream.radioclub80.cl:10012/live.flac",
+      "genre": "Trance",
+      "enabled": true
+    },
+    {
+      "id": "DHECTAR Hits",
+      "name": "DHECTAR Hits",
+      "url": "http://manager.dhectar.fr:1110/stream",
+      "genre": "Techno/Electro",
+      "enabled": true
+    },
+    {
+      "id": "Intense Radio",
+      "name": "Intense Radio",
+      "url": "http://secure.live-streams.nl/flac.flac",
+      "genre": "Dance",
+      "enabled": true
+    }
+  ],
+  "last_updated": "2026-03-03"
+}

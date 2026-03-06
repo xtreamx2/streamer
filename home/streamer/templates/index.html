@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Tom's Streamer</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    html {
+      --bg: #0d0d0d; --text: #fff; --accent: #4DA6FF; --card: #1a1a1a;
+      --vu-blue: #4DA6FF; --vu-yellow: #FFE033; --vu-red: #FF6666;
+      --vu-grid: #222; --vu-label: #AAA;
+    }
+    html[data-theme="light"] {
+      --bg: #fff; --text: #1a1a1a; --accent: #0056b3; --card: #f0f0f0;
+      --vu-blue: #6DB8FF; --vu-yellow: #FFF066; --vu-red: #FF8888;
+      --vu-grid: #ddd; --vu-label: #666;
+    }
+    body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 1em; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card { background: var(--card); border-radius: 8px; padding: 1em; margin: 1em 0; }
+    button { background: var(--accent); color: #fff; border: none; padding: 0.5em 1em; margin: 0.2em; border-radius: 4px; cursor: pointer; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .slider { width: 100%; margin: 0.5em 0; }
+    
+    /* VU Meter - HORIZONTAL LAYOUT */
+    .vu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5em; }
+    .vu-container { display: flex; gap: 2px; justify-content: stretch; align-items: flex-end; height: 150px; background: var(--vu-grid); border-radius: 4px; padding: 5px; overflow: hidden; }
+    .vu-channel { display: flex; flex-direction: row; height: 100%; gap: 1px; flex: 1; }
+    .vu-band { flex: 1; min-width: 3px; max-width: 8px; border-radius: 2px 2px 0 0; transition: height 0.05s; background: var(--vu-blue); align-self: flex-end; }
+    .vu-peak { position: absolute; width: 100%; height: 2px; background: #fff; margin-top: -2px; }
+
+    /* STYL SUWAKÓW EQ */
+    .eq-section { margin-top: 30px; background: #f8f9fa; padding: 20px; border-radius: 10px; }
+    .eq-row { display: flex; align-items: center; margin-bottom: 10px; }
+    .eq-label { width: 80px; font-weight: bold; color: #495057; }
+    .eq-slider { flex-grow: 1; margin: 0 15px; }
+    .eq-value { width: 60px; text-align: right; font-weight: bold; color: #007bff; }
+    .eq-value::before { content: '+'; color: #28a745; }
+    .eq-value::after { content: 'dB'; margin-left: 5px; color: #6c757d; }
+    .eq-value.negative::before { content: '-'; color: #dc3545; }
+
+    /* STYL PRZYCISKÓW ŹRÓDEł */
+    .sources-section { margin-top: 20px; background: #fff3cd; padding: 20px; border-radius: 10px; text-align: center; }
+    .source-btn { margin: 5px; padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: all 0.3s; }
+    .source-btn.active { transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    .source-radio { background: #007bff; color: white; }
+    .source-bt { background: #28a745; color: white; }
+
+    /* Radio */
+    .station-list { max-height: 300px; overflow-y: auto; }
+    .station { display: flex; justify-content: space-between; padding: 0.5em; border-bottom: 1px solid var(--vu-grid); cursor: pointer; }
+    .station:hover { background: rgba(255,255,255,0.1); }
+    .station.playing { border-left: 3px solid var(--accent); }
+    .tabs { display: flex; gap: 0.5em; margin-bottom: 1em; }
+    .tab { padding: 0.5em 1em; background: var(--card); border: none; color: var(--text); border-radius: 4px 4px 0 0; cursor: pointer; }
+    .tab.active { background: var(--accent); }
+    .inactive { opacity: 0.5; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎵 Tom's Streamer <button onclick="toggleTheme()">🌗</button></h1>
+  
+  <div class="card">
+    <h3 id="track-info">Ładowanie...</h3>
+    <div>
+      <button onclick="control('play')">▶</button>
+      <button onclick="control('pause')">▮▮</button>
+      <button onclick="control('stop')">■</button>
+    </div>
+    <label>Głośność: <span id="vol-val">50</span>%</label>
+    <input type="range" class="slider" min="0" max="100" value="50" oninput="setVolume(this.value)">
+  </div>
+  
+  <div class="card">
+    <div class="vu-header">
+      <h3 style="margin:0;">📊 <span id="vu-mode-text">VU Meter</span></h3>
+      <button onclick="toggleVUMode()" style="padding:0.3em 0.8em; font-size:0.9em;">
+        Przełącz: <span id="vu-mode-btn">Spectrum</span>
+      </button>
+    </div>
+    <div class="vu-container" id="vu"></div>
+  </div>
+  
+  <div class="card">
+    <h3>📻 Radio</h3>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('all')">Wszystkie</button>
+      <button class="tab" onclick="showTab('fav')">★ Ulubione</button>
+    </div>
+    <div class="station-list" id="station-list"></div>
+    <details style="margin-top:1em;">
+      <summary>➕ Dodaj stację</summary>
+      <form onsubmit="addStation(event)" style="margin-top:0.5em; display:grid; gap:0.5em;">
+        <input type="text" id="new-name" placeholder="Nazwa stacji" required style="padding:0.3em; background:var(--card); color:var(--text); border:1px solid var(--vu-grid); border-radius:4px;">
+        <input type="url" id="new-url" placeholder="URL strumienia (http://...)" required style="padding:0.3em; background:var(--card); color:var(--text); border:1px solid var(--vu-grid); border-radius:4px;">
+        <button type="submit" style="align-self:start;">Dodaj</button>
+      </form>
+    </details>
+  </div>
+
+    <!-- === SECTION EQ SLIDERS === -->
+    <div class="eq-section">
+        <h4>⚙️ Equalizer (CamillaDSP)</h4>
+        <hr>
+
+        <!-- Lista generowana dynamicznie -->
+        <div id="eq-sliders-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <small>Dodajemy filtry...</small>
+        </div>
+
+        <button onclick="applyEq()" class="btn btn-primary mt-3">💾 Zastosuj zmiany</button>
+    </div>
+
+        <!-- Lista generowana dynamicznie -->
+        <div id="eq-sliders-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <small>Dodajemy filtry...</small>
+        </div>
+
+        <button onclick="applyEq()" class="btn btn-primary mt-3">💾 Zastosuj zmiany</button>
+    </div>
+
+    <!-- === SECTION SOURCE SELECTOR === -->
+    <div class="sources-section">
+        <h4>📻 Źródło dźwięku</h4>
+
+        <!-- Sekcja z listą wykrytych słuchawek -->
+        <div id="audio-sinks-list" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 10px;">
+            <small>Dodajemy dostępne źródła...</small>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <button id="btn-radio" class="source-btn source-radio" onclick="setSource('alsa')">📻 Radio (DAC)</button>
+            <button id="btn-bt" class="source-btn source-bt" disabled>🎵 Czyszczenie BT...</button>
+        </div>
+    </div>
+  
+  <div class="card">
+    <h3>🔜 Wkrótce</h3>
+    <p class="inactive">🔵 Bluetooth audio</p>
+    <p class="inactive">🔌 Analog input (4×)</p>
+    <p class="inactive">📱 ESP32 touch interface</p>
+  </div>
+  
+  <footer style="text-align:center; padding:1em; color:#666; font-size:0.9em;">
+    <a href="https://github.com/tom/streamer" target="_blank" style="color:#666; text-decoration:none;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='#666'">
+      Streamer Audio v0.9.2a
+    </a>
+  </footer>
+</div>
+
+<script>
+const API = location.origin;
+let socket = io();
+let vuBands = 32;  // 32 bands per channel (display)
+let allStations = [];
+let currentTab = 'all';
+let vuMode = 'vu';  // 'vu' or 'spectrum'
+
+// Init VU bars - HORIZONTAL, 32 bands per channel
+const vu = document.getElementById('vu');
+for (let ch = 0; ch < 2; ch++) {
+  const channel = document.createElement('div');
+  channel.className = 'vu-channel';
+  channel.id = ch === 0 ? 'vu-l' : 'vu-r';
+  for (let i = 0; i < vuBands; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'vu-band';
+    bar.style.height = '2px';
+    channel.appendChild(bar);
+  }
+  vu.appendChild(channel);
+}
+
+async function updateStatus() {
+  const r = await fetch(API + '/api/status');
+  const d = await r.json();
+  document.getElementById('track-info').innerHTML = `<strong>${d.state.toUpperCase()}</strong><br>${d.title}${d.artist ? '<br><small>'+d.artist+'</small>' : ''}`;
+  document.getElementById('vol-val').textContent = d.volume;
+}
+setInterval(updateStatus, 2000);
+
+async function control(action) { await fetch(API + '/api/' + action, {method: 'POST'}); updateStatus(); }
+async function setVolume(vol) {
+  document.getElementById('vol-val').textContent = vol;
+  await fetch(API + '/api/volume/' + vol, {method: 'POST'});
+}
+
+// VU Mode toggle
+function toggleVUMode() {
+  vuMode = vuMode === 'vu' ? 'spectrum' : 'vu';
+  document.getElementById('vu-mode-text').textContent = vuMode === 'vu' ? 'VU Meter' : 'Spectrum Analyzer';
+  document.getElementById('vu-mode-btn').textContent = vuMode === 'vu' ? 'Spectrum' : 'VU Meter';
+  // Request new data with updated mode
+  socket.emit('vu_request', {mode: vuMode});
+}
+
+// VU Meter update via WebSocket
+socket.on('vu_data', data => {
+  ['l','r'].forEach((ch, idx) => {
+    const bars = document.getElementById('vu-' + ch).children;
+    const levels = data['vu_' + ch];
+    for (let i = 0; i < bars.length; i++) {
+      const dB = levels[i] !== undefined ? levels[i] : -60;
+      
+      // Height: -60dB → 0px, 0dB → 140px (rosną od DOŁU!)
+      const h = Math.max(0, Math.min(140, (dB + 60) / 60 * 140));
+      bars[i].style.height = h + 'px';
+      
+      // WINAMP-STYLE GRADIENT (od dołu do góry)
+      // Dolna połowa (0-50%): zawsze niebieska
+      // Górna połowa (50-100%): gradient zależny od dB
+      
+      if (dB < -12) {
+        // Tylko niebieski (ciche)
+        bars[i].style.background = 'linear-gradient(to top, #4DA6FF 0%, #4DA6FF 50%, #4DA6FF 50%, #4DA6FF 100%)';
+      } else if (dB < -6) {
+        // Niebieski → żółty (w górnej połowie)
+        const pct = ((dB + 12) / 6) * 50; // 0% → 50% w górnej połowie
+        bars[i].style.background = `linear-gradient(to top, #4DA6FF 0%, #4DA6FF 50%, #4DA6FF 50%, #FFE033 ${50+pct}%, #FFE033 100%)`;
+      } else if (dB < -1) {
+        // Żółty → czerwony (w górnej połowie)
+        const pct = ((dB + 6) / 5) * 50; // 0% → 50% w górnej połowie
+        bars[i].style.background = `linear-gradient(to top, #4DA6FF 0%, #4DA6FF 50%, #FFE033 50%, #FF6666 ${50+pct}%, #FF6666 100%)`;
+      } else {
+        // Czerwony (głośne)
+        bars[i].style.background = 'linear-gradient(to top, #4DA6FF 0%, #4DA6FF 50%, #FF6666 50%, #FF6666 100%)';
+      }
+    }
+  });
+});
+
+// Radio
+async function loadStations() {
+  const r = await fetch(API + '/api/radio/stations');
+  const d = await r.json();
+  allStations = d.stations;
+  const favs = d.favorites || [];
+  renderStations(currentTab === 'fav' ? allStations.filter(s => favs.includes(s.id)) : allStations, favs);
+}
+
+function renderStations(stations, favorites) {
+  const list = document.getElementById('station-list');
+  if (!list) return;
+  list.innerHTML = stations.map(s => {
+    const isFav = favorites.includes(s.id);
+    return `<div class="station" onclick="playStation('${s.id}')">
+      <span>${s.name}${s.genre ? ' <small style="opacity:0.6">('+s.genre+')</small>' : ''}</span>
+      <span style="display:flex; gap:0.5em;" onclick="event.stopPropagation()">
+        <button onclick="toggleFavorite('${s.id}', ${!isFav}); event.stopPropagation();" style="padding:0.2em 0.4em; background:none; border:none; font-size:1.2em; cursor:pointer;">${isFav ? '★' : '☆'}</button>
+        <button onclick="deleteStation('${s.id}'); event.stopPropagation();" style="padding:0.2em 0.4em; background:#555; border:none; color:#fff; border-radius:2px; cursor:pointer;">🗑️</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  loadStations();
+}
+
+// === JS: Aktualizacja wartości suwaków (obrazek tekstu) ===
+function setupSliders() {
+    const bands = ['bass', 'low-mid', 'mid', 'high-mid', 'treble'];
+    bands.forEach(band => {
+        const input = document.getElementById(band);
+        const output = document.getElementById(band + '-val');
+        input.addEventListener('input', () => {
+            const val = parseFloat(input.value);
+            // Wyświetlanie '+X' lub '-X' dB
+            const sign = val >= 0 ? '+' : '';
+            output.textContent = sign + val.toFixed(1) + ' dB';
+            output.classList.toggle('negative', val < 0);
+        });
+    });
+}
+
+// === JS: Wyślij wartość EQ do servera ===
+async function applyEq() {
+    const bands = ['bass', 'low-mid', 'mid', 'high-mid', 'treble'];
+    for (let band of bands) {
+        const input = document.getElementById(band);
+        const val = input.value;
+        try {
+            await fetch('/api/eq/' + band.replace(/-/g,'_'), {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({gain: val})
+            });
+        } catch(e) { console.log('EQ error:', e); }
+    }
+    alert('✅ Równoważenie dźwięku zastosowane!');
+}
+
+async function loadEqFilters() {
+    const container = document.getElementById('eq-sliders-list');
+    
+    try {
+        const response = await fetch('/api/eq/list');
+        const filters = await response.json();
+        
+        if (filters.length === 0) {
+            container.innerHTML = '<small style="color:#dc3545">Brak filtrów EQ w konfiguracji.</small>';
+            return;
+        }
+        
+        let html = '';
+        
+        filters.forEach(f => {
+            // Formatowanie wartości + lub - dB
+            const sign = f.current_gain >= 0 ? '+' : '';
+            const displayVal = sign + Math.abs(f.current_gain).toFixed(1);
+            const negativeClass = f.current_gain < 0 ? 'negative' : '';
+            
+            html += `
+                <div class="eq-row" data-filter="${f.name}">
+                    <label class="eq-label">${f.name}</label>
+                    <input type="range" id="${f.name}" class="eq-slider" min="-10" max="10" value="${f.current_gain}" step="0.5">
+                    <span id="${f.name}-val" class="eq-value ${negativeClass}">${displayVal} dB</span>
+                </div>`;
+        });
+        
+        container.innerHTML = html;
+        
+        // Obsługa zdarzeń input
+        filters.forEach(f => {
+            const input = document.getElementById(f.name);
+            const output = document.getElementById(`${f.name}-val`);
+            
+            input.addEventListener('input', () => {
+                const val = parseFloat(input.value);
+                const sign = val >= 0 ? '+' : '';
+                output.textContent = sign + Math.abs(val).toFixed(1) + ' dB';
+                output.classList.toggle('negative', val < 0);
+            });
+        });
+        
+    } catch (e) {
+        container.innerHTML = '<small>Error loading EQ.</small>';
+    }
+}
+
+async function applyEq() {
+    const rows = document.querySelectorAll('.eq-row[data-filter]');
+    const promises = [];
+    
+    for (let row of rows) {
+        const filterName = row.getAttribute('data-filter');
+        const input = document.getElementById(filterName);
+        const val = input.value;
+        
+        promises.push(fetch(`/api/eq/${encodeURIComponent(filterName)}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({gain: val})
+        }).catch(e => console.log(`EQ error for ${filterName}:`, e)));
+    }
+    
+    await Promise.all(promises);
+    alert('✅ Równoważenie dźwięku zastosowane!');
+    setTimeout(loadEqFilters, 2000); // Odśwież widok po restarcie
+}
+
+// === JS: Pobierz dostępne źródła audio ===
+async function loadAudioSources() {
+    const container = document.getElementById('audio-sinks-list');
+    try {
+        const response = await fetch('/api/audio-sinks');
+        const sinks = await response.json();
+        
+        if (sinks.length === 0) {
+            container.innerHTML = '<small style="color:#dc3545">Brak aktywnych urządzeń audio.</small>';
+            return;
+        }
+
+        let html = '';
+        
+        // Dodaj przycisk dla każdego wykrytego sinka
+        sinks.forEach((sink, index) => {
+            if (sink.type === 'bt' || sink.name.includes('bluetooth')) {
+                html += `<button id="bt-${index}" class="source-btn source-bt" onclick="setSource('${sink.name.replace(/ /g,'_')}')">${getBTIcon(sink.name)}</button>`;
+            }
+        });
+        
+        // Przycisk radio (zawsze obecny)
+        html += `<button id="btn-radio" class="source-btn source-radio" onclick="setSource('alsa_output.platform-soc_audio.analog-stereo')">📻 Radio (DAC)</button>`;
+        
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<small>Error loading sources.</small>';
+    }
+}
+
+function getBTIcon(name) {
+    return '🎵 ' + (name.length > 10 ? name.substring(0, 10) + '..' : name);
+}
+
+async function setSource(source) {
+    try {
+        const res = await fetch(`/api/source/set/${encodeURIComponent(source)}`, {method: 'POST'});
+        const json = await res.json();
+        
+        if (json.status === 'success') {
+            alert(`✅ Źródło zmienione na: ${json.current}`);
+            reloadSources(); // Odśwież listę po zmianie
+        } else {
+            alert('❌ Błąd zmiany źródła: ' + json.error);
+        }
+    } catch (e) {
+        alert('❌ Błąd połączenia: ' + e);
+    }
+}
+
+function reloadSources() {
+    loadAudioSources();
+}
+
+async function playStation(id) {
+  document.querySelectorAll('.station').forEach(el => el.classList.remove('playing'));
+  event.currentTarget.classList.add('playing');
+  await fetch(API + '/api/radio/station/' + id, {method: 'POST'});
+  updateStatus();
+}
+
+async function toggleFavorite(id, add) {
+  await fetch(API + '/api/radio/favorite/' + id, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({add: add})});
+  loadStations();
+}
+
+async function deleteStation(id) {
+  if (!confirm('Usunąć tę stację?')) return;
+  await fetch(API + '/api/radio/station/' + id, {method: 'DELETE'});
+  loadStations();
+}
+
+async function addStation(e) {
+  e.preventDefault();
+  const name = document.getElementById('new-name').value;
+  const url = document.getElementById('new-url').value;
+  await fetch(API + '/api/radio/station', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, url})});
+  e.target.reset();
+  loadStations();
+}
+
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  void document.body.offsetHeight; // force reflow
+}
+
+// Init on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  updateStatus();
+  loadStations();
+  // Request initial VU data
+  socket.emit('vu_request', {mode: vuMode});
+});
+
+
+// Inicjalizacja przy starcie strony
+document.addEventListener('DOMContentLoaded', () => {
+    setupSliders();
+    loadAudioSources(); // Wywołanie listy źródeł
+});
+</script>
+</body>
+</html>

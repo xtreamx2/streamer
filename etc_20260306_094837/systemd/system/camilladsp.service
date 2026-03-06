@@ -1,0 +1,14 @@
+[Unit]
+Description=CamillaDSP Audio Processor
+After=network.target mpd.service
+Wants=mpd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/camilladsp /etc/camilladsp/config.yml
+Restart=on-failure
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target
