@@ -55,30 +55,30 @@ Hi-Res Internet Radio Streamer with EQ
 
 ## 📁 Project Structure
 
-streamer/
-├── api/
-│   ├── app.py          # Flask + SocketIO, punkt wejściowy
-│   └── routes.py       # REST API /api/*
-├── core/
-│   ├── source_manager.py   # przełączanie źródeł
-│   ├── eq_manager.py       # EQ per źródło, presety
-│   ├── uart_manager.py     # JSON UART ↔ RP2040
-│   ├── bt_manager.py       # BlueZ fasada
-│   └── network_manager.py  # nmcli WiFi
-├── sources/
-│   ├── base.py             # klasa bazowa
-│   ├── radio.py            # ✅ Internet radio (GStreamer)
-│   ├── bluetooth.py        # ✅ A2DP sink + source (BlueZ)
-│   ├── analog.py           # 🔲 Phono / Line (szkielet)
-│   └── digital.py          # 🔲 S/PDIF (szkielet)
-├── web/
-│   └── templates/
-│       └── index.html      # Web UI
-├── radio/
-│   └── stations.json
-├── config.json
-├── requirements.txt
-└── streamer.service
+- streamer/
+- ├── api/
+- │   ├── app.py          # Flask + SocketIO, punkt wejściowy
+- │   └── routes.py       # REST API /api/*
+- ├── core/
+- │   ├── source_manager.py   # przełączanie źródeł
+- │   ├── eq_manager.py       # EQ per źródło, presety
+- │   ├── uart_manager.py     # JSON UART ↔ RP2040
+- │   ├── bt_manager.py       # BlueZ fasada
+- │   └── network_manager.py  # nmcli WiFi
+- ├── sources/
+- │   ├── base.py             # klasa bazowa
+- │   ├── radio.py            # ✅ Internet radio (GStreamer)
+- │   ├── bluetooth.py        # ✅ A2DP sink + source (BlueZ)
+- │   ├── analog.py           # 🔲 Phono / Line (szkielet)
+- │   └── digital.py          # 🔲 S/PDIF (szkielet)
+- ├── web/
+- │   └── templates/
+- │       └── index.html      # Web UI
+- ├── radio/
+- │   └── stations.json
+- ├── config.json
+- ├── requirements.txt
+- └── streamer.service
 
 ## 🔧 Quick Start
 ```bash
