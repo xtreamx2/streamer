@@ -37,7 +37,7 @@ Internet Radio Streamer z EQ) i WWW UI (Flask).
 | Flask WWW UI | ✅ | Port 8000 |
 | Radio CRUD | ✅ | Add/delete/favorites |
 | VU Meter | ⚠️ | wirk but not good |
-| Theme toggle | ⚠️ | Dark onlny |
+| Theme toggle | ⚠️ | Dark only |
 
 **Known issues:**
 - Spectrum analiser - not working
