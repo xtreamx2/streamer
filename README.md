@@ -13,7 +13,7 @@
 - [x] EQ Sliders w UI ✅
 - [x] Bluetooth jako źródło audio ✅
 - [x] Selector źródeł (Radio/BT/Analog) ✅
-- [ ] Phase 2: ESP32 + LCD Touch Interface (Brak hardware jeszcze)
+- [ ] Phase 2: RP2040 + LCD Touch Interface (Brak hardware jeszcze)
 
 ## 📖 Opis
 
@@ -37,7 +37,7 @@ Internet Radio Streamer z EQ) i WWW UI (Flask).
 | Flask WWW UI | ✅ | Port 8000 |
 | Radio CRUD | ✅ | Add/delete/favorites |
 | VU Meter | ⚠️ | wirk but not good |
-| Theme toggle | ✅ | Dark onlny |
+| Theme toggle | ⚠️ | Dark onlny |
 
 **Known issues:**
 - Spectrum analiser - not working
