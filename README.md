@@ -122,41 +122,41 @@ Stream info -kHz i Stereo/ch z GStreamer
 
 
 v0.10.3.21:
-Meters - jeden endpoint /api/meters zamiast dwóch, polling co 100ms — koniec z ERR_CONNECTION_RESET
-BT/Radio konflikt ALSA - bluealsa-aplay automatycznie zatrzymywany gdy radio aktywne, wznawiany gdy BT aktywne
-Spectrum - te same dane, ale teraz serwer nie pada pod obciążeniem
+- Meters - jeden endpoint /api/meters zamiast dwóch, polling co 100ms — koniec z ERR_CONNECTION_RESET
+- BT/Radio konflikt ALSA - bluealsa-aplay automatycznie zatrzymywany gdy radio aktywne, wznawiany gdy BT aktywne
+- Spectrum - te same dane, ale teraz serwer nie pada pod obciążeniem
 
 v0.10.3.20:
-IP - fallback na eth0/wlan0/end0, zwraca IP niezależnie od interfejsu
-Spectrum - prawdziwy FFT z GStreamer spectrum element (32 pasma), endpoint /api/spectrum, canvas rysuje realne dane
-VU polling - 80ms zamiast 60ms
+- IP - fallback na eth0/wlan0/end0, zwraca IP niezależnie od interfejsu
+- Spectrum - prawdziwy FFT z GStreamer spectrum element (32 pasma), endpoint /api/spectrum, canvas rysuje realne dane
+- VU polling - 80ms zamiast 60ms
 
 v0.10.3.19 changelog: 
 Bugfix:
--usunięty subprocess bluealsa-aplay z kodu, audio BT obsługuje teraz systemowy serwis.
+- usunięty subprocess bluealsa-aplay z kodu, audio BT obsługuje teraz systemowy serwis.
 Podsumowanie stanu BT:
-bluealsa.service -daemon BlueZ A2DP
-bluealsa-aplay.service -przekazuje audio na hw:sndrpihifiberry,0 (skonfigurowany przez override)
-Streamer -obsługuje tylko parowanie/connect przez D-Bus, audio zostawia systemowi
+- bluealsa.service -daemon BlueZ A2DP
+- bluealsa-aplay.service -przekazuje audio na hw:sndrpihifiberry,0 (skonfigurowany przez override)
+- Streamer -obsługuje tylko parowanie/connect przez D-Bus, audio zostawia systemowi
 
 v0.10.3.18 changelog:
-Stacja - przywracana przy starcie zawsze, oraz automatycznie gdy przełączasz z BT/innego źródła na radio
-Głośność - przywracana do wszystkich sources przy starcie
-Śmieciowy katalog - usunięty z paczki (usuń też na malinie: rm -rf "/home/$USER/streamer/{core,sources,api,web")
+- Stacja - przywracana przy starcie zawsze, oraz automatycznie gdy przełączasz z BT/innego źródła na radio
+- Głośność - przywracana do wszystkich sources przy starcie
+- Śmieciowy katalog - usunięty z paczki (usuń też na malinie: rm -rf "/home/$USER/streamer/{core,sources,api,web")
 
 v0.10.3.17 changelog:
-Stacja - przywracana zawsze przy starcie, niezależnie od last_source
-BT audio - bluealsa-aplay w pętli wątkowej, automatycznie restartuje gdy telefon zaczyna/kończy grać
-Spectrum - usunięty roundRect (niekompatybilny ze starszym Chromium), naprawiony rozmiar canvas
+- Stacja - przywracana zawsze przy starcie, niezależnie od last_source
+- BT audio - bluealsa-aplay w pętli wątkowej, automatycznie restartuje gdy telefon zaczyna/kończy grać
+- Spectrum - usunięty roundRect (niekompatybilny ze starszym Chromium), naprawiony rozmiar canvas
 
 v0.10.3.16 changelog:
-Spectrum/VU - chip VU domyślnie on, container widoczny od startu
-IP - usunięte błędne pole IP4 z nmcli
-BT audio - bluealsa-aplay uruchamiany jako subprocess przy activate, zatrzymywany przy deactivate
+- Spectrum/VU - chip VU domyślnie on, container widoczny od startu
+- IP - usunięte błędne pole IP4 z nmcli
+- BT audio - bluealsa-aplay uruchamiany jako subprocess przy activate, zatrzymywany przy deactivate
 
 v0.10.3.15 changelog:
-Peak hold - marker przeniesiony poza maskę CSS, biały z glow, widoczny
-Spectrum - 32 pasma animowane przez requestAnimationFrame, kształt EQ-like (basy/górne wzmocnione), peak ticki białe, ten sam gradient co VU, płynne opadanie
+- Peak hold - marker przeniesiony poza maskę CSS, biały z glow, widoczny
+- Spectrum - 32 pasma animowane przez requestAnimationFrame, kształt EQ-like (basy/górne wzmocnione), peak ticki białe, ten sam gradient co VU, płynne opadanie
 
 v0.10.3.14 changelog:
 - Gradient zawsze rozłożony na całej szerokości tracku (niebieski → żółty → czerwony)
