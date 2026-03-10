@@ -1,133 +1,138 @@
-# 🎵 Tom's Streamer Audio
+# Tom's Streamer v3.0
 
-**Data ukończenia:** 2026-03-05 
-**Status:** ✅ ALPHA COMPLETE
-**Wersja:** v0.9.1 (Alpha)
+Zintegrowany wzmacniacz/streamer na Raspberry Pi.
 
-## 🚀 Cechy Główne
-- [x] MPD + Internet Radio Streaming
-- [x] CamillaDSP 7-Band EQ Processing
-- [x] Flask WWW UI (Port 8000)
-- [x] Auto-Recover Watchdog
-- [x] System Monitoring (`monit`)
-- [x] Full Backup & Documentation
-
-## 🔜 v0.9.2 Roadmap
-- [ ] EQ Sliders w UI (sterowanie CamillaDSP)
-- [ ] Bluetooth jako źródło audio
-- [ ] Selector źródeł (Radio/BT/Analog)
-- [ ] Phase 2: ESP32 + LCD Touch Interface
-
-## 📖 Opis
-
-Internet Radio Streamer z EQ (CamillaDSP) i WWW UI (Flask).
-
-**Hardware:**
+## Hardware
 - Raspberry Pi 3/4
-- PCM5102 DAC (I2S)
-- Słuchawki głośniki
+- DAC: PCM5102 → `hw:sndrpihifiberry,0`
+- ADC: PCM1808 (I2S) → wejścia analogowe
+- Panel: RP2040 (LCD, enkodery, switche, WS2812) ↔ UART
 
-**Software:**
-- MPD (Music Player Daemon)
-- CamillaDSP v3.0.1 (EQ 7-band)
-- Flask + SocketIO (WWW UI)
-- ALSA Loopback (audio chain)
+## Struktura
 
-## ✅ Working Features
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| MPD streaming | ✅ | Internet radio |
-| CamillaDSP EQ | ✅ | 7-band (bass, treble, 5x PEQ) |
-| Flask WWW UI | ✅ | Port 8000 |
-| Radio CRUD | ✅ | Add/delete/favorites |
-| VU Meter | ⚠️ | Simulated data (Phase 2: real FFT) |
-| Theme toggle | ✅ | Dark/Light |
-| ALSA Loopback | ✅ | MPD → CamillaDSP → DAC |
-
-**Known issues:**
-- Hi-Res streams may occasionally drop on track change (buffer limits)
-- ESP32 + LCD hardware UI (Phase 2)
-
-✅ VU Meter - czytelny layout (32 słupki, poziomo)
-✅ Gradient colors - niebieski→żółty→czerwony
-✅ VU/Spectrum toggle - przełącznik działa
-✅ Theme toggle - dark/light working
-✅ Radio CRUD + favorites - działa
-✅ CamillaDSP EQ - działa (7-band)
-✅ Flask API - działa
-✅ Backup + README - gotowe
-
-Hi-Res Internet Radio Streamer with CamillaDSP EQ
-
-## 📁 Project Structure
-
-/home/tom/streamer/
-├── app.py # Flask app (WWW UI + API)
-├── radio_handler.py # Radio stations CRUD
-├── vu_handler.py # VU meter logic (simulated)
-├── radio_watchdog.sh # Auto-reconnect na track change
-├── templates/
-│ └── index.html # WWW UI
+```
+streamer/
+├── api/
+│   ├── app.py          # Flask + SocketIO, punkt wejściowy
+│   └── routes.py       # REST API /api/*
+├── core/
+│   ├── source_manager.py   # przełączanie źródeł
+│   ├── eq_manager.py       # EQ per źródło, presety
+│   ├── uart_manager.py     # JSON UART ↔ RP2040
+│   ├── bt_manager.py       # BlueZ fasada
+│   └── network_manager.py  # nmcli WiFi
+├── sources/
+│   ├── base.py             # klasa bazowa
+│   ├── radio.py            # ✅ Internet radio (GStreamer)
+│   ├── bluetooth.py        # ✅ A2DP sink + source (BlueZ)
+│   ├── analog.py           # 🔲 Phono / Line (szkielet)
+│   └── digital.py          # 🔲 S/PDIF (szkielet)
+├── web/
+│   └── templates/
+│       └── index.html      # Web UI
 ├── radio/
-│ ├── stations.json # Radio stations list
-│ └── favorites.json # Favorites
-├── logs/
-│ └── watchdog.log # Watchdog logs
-├── static/
-│ ├── css/
-│ └── js/
-├── README.md
-└── backups/
-└── (tar.gz archiwa)
+│   └── stations.json
+├── config.json
+├── requirements.txt
+└── streamer.service
+```
 
-## 🔧 Quick Start
+## Instalacja
+
 ```bash
+# 1. Zależności systemowe
+sudo apt update
+sudo apt install python3-gi python3-gi-cairo \
+  gir1.2-gstreamer-1.0 \
+  gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-ugly gstreamer1.0-alsa gstreamer1.0-libav \
+  python3-dbus bluetooth bluez
 
-# Start MPD
-sudo systemctl start mpd
+# 2. Zależności Python
+pip3 install -r requirements.txt --break-system-packages
 
-# Start CamillaDSP
-sudo camilladsp /etc/camilladsp/config.yml &
+# 3. Konfiguracja
+cp streamer.service /etc/systemd/system/
+# Edytuj: User=tom, WorkingDirectory, ALSA_DEVICE, UART_PORT
 
-# Start Flask
-cd ~/streamer && python3 app.py &
+# 4. Uruchomienie
+sudo systemctl daemon-reload
+sudo systemctl enable streamer
+sudo systemctl start streamer
+```
 
-# Open browser
-http://<ip_streamer>:8000/
+## REST API
 
-🎚️ EQ Config
-Location: /etc/camilladsp/config.yml
-Bass: Highshelf @ 200Hz
-Treble: Lowshelf @ 4000Hz
-5-band PEQ: 100, 500, 1000, 4000, 10000 Hz
-Max gain: +3 to +6dB (avoid clipping!)
+| Endpoint | Metoda | Opis |
+|----------|--------|------|
+| `/api/status` | GET | Pełny status systemu |
+| `/api/source` | GET/POST | Aktywne źródło |
+| `/api/volume` | GET/POST | Głośność 0-100 |
+| `/api/eq/{source}` | GET/POST | EQ 10 pasm |
+| `/api/eq/{source}/preset/{name}` | POST | Zastosuj preset |
+| `/api/eq/presets` | GET | Lista presetów |
+| `/api/radio/stations` | GET/POST | Stacje |
+| `/api/radio/stations/{id}` | DELETE | Usuń stację |
+| `/api/radio/stations/{id}/favorite` | POST | Ulubiona |
+| `/api/radio/play` | POST | Odtwarzaj stację |
+| `/api/radio/stop` | POST | Stop |
+| `/api/bluetooth/devices` | GET | Lista urządzeń |
+| `/api/bluetooth/scan` | POST | Skanuj |
+| `/api/bluetooth/pair` | POST | Paruj |
+| `/api/bluetooth/connect` | POST | Połącz |
+| `/api/bluetooth/mode` | POST | sink/source |
+| `/api/network/status` | GET | Status WiFi |
+| `/api/network/scan` | GET | Skanuj sieci |
+| `/api/network/connect` | POST | Połącz z WiFi |
+| `/api/system/reboot` | POST | Reboot |
+| `/api/system/info` | GET | CPU/RAM/Temp |
 
-##
-🚀 Phase 2 (TODO)
-ESP32 + LCD hardware UI
-UART communication (ESP32 ↔ Pi)
-Physical encoders + buttons
-IR remote control
-Bluetooth audio input
-Analog input (PCM1808)
-##
+## WebSocket events
 
-📊 Changelog
-v0.9.1 (2026-03-03) - Alpha Complete
-✅ MPD + Internet Radio streaming
-✅ CamillaDSP v3.0.1 EQ (7-band)
-✅ Flask WWW UI (play/pause/volume/radio)
-✅ VU Meter (64 bands, Winamp-style gradient)
-✅ Dark/Light theme toggle
-✅ Radio CRUD + favorites (JSON)
-✅ ALSA Loopback chain
-✅ Radio watchdog (auto-reconnect na track change)
-⚠️ VU Meter: simulated data (Phase 2: real FFT from audio)
-v0.9.0 (2026-03-02) - Core Working
-✅ MPD configured
-✅ CamillaDSP config (v3.0.1 format)
-✅ Flask basic API
-v0.1.0-v0.8.x (2026-02-xx) - Development
-Multiple iterations, hardware testing, BOM finalization
-v0.9.2 roadmap added - EQ sliders + dynamic source selection
+**Server → Client:**
+- `status` — pełny status co 3s
+- `state` — zmiana stanu źródła
+- `meta` — tytuł/artysta (radio ICY)
+- `volume` — zmiana głośności
+- `source` — zmiana źródła
+- `eq` — zmiana EQ
+- `ir` — zdarzenie pilota
+
+**Client → Server:**
+- `play_radio` — `{url, name}`
+- `stop`
+- `set_volume` — `{volume}`
+- `set_source` — `{source}`
+- `set_eq` — `{source, gains[10]}`
+
+## UART protokół (RPi ↔ RP2040)
+
+**RPi → RP2040:**
+```json
+{"cmd":"state","source":"radio","title":"Coldplay","volume":75,"state":"playing"}
+{"cmd":"eq","gains":[4,2,0,0,0,0,0,1,2,3]}
+{"cmd":"led","mode":"vu","data":[12,45,78,90,60,40,20,10]}
+{"cmd":"display","line1":"RMF FM","line2":"Coldplay - Scientist"}
+{"cmd":"volume","value":75}
+```
+
+**RP2040 → RPi:**
+```json
+{"evt":"encoder","id":0,"delta":1}
+{"evt":"encoder","id":1,"delta":-1}
+{"evt":"switch","id":3,"state":1}
+{"evt":"ir","code":"0xAB12"}
+{"evt":"touch","x":120,"y":85}
+```
+
+## Motyw kolorystyczny (Web + RP2040)
+
+| Rola | Kolor |
+|------|-------|
+| Tło | `#0d0f14` |
+| Karta | `#111520` |
+| Akcent niebieski | `#2d8cf0` |
+| Akcent pomarańczowy | `#f0820d` |
+| Tekst | `#e8eaf0` |
+| VU peak | `#f0820d` |
+| Playing | `#22c55e` |

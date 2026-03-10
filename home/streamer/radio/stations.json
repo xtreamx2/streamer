@@ -1,48 +1,65 @@
 {
-  "version": "1.1",
+  "version": "3.0",
   "stations": [
     {
-      "id": "rmffm",
+      "id": "rmf",
       "name": "RMF FM",
-      "url": "https://rs102-krk.rmfstream.pl/RMFFM48",
-      "genre": "pop",
+      "url": "https://rs201-krk.rmfstream.pl/rmf_fm",
+      "genre": "Pop/Rock",
+      "bitrate": 128,
+      "codec": "MP3",
+      "favorite": true,
       "enabled": true
     },
     {
-      "id": "tokfm",
+      "id": "tok",
       "name": "TOK FM",
-      "url": "https://stream.tokfm.pl/tokfm.mp3",
-      "genre": "news",
+      "url": "https://n-22-14.dcs.redcdn.pl/sc/o2/Eurozet/live/tokfm.livx?audio=5",
+      "genre": "News",
+      "bitrate": 128,
+      "codec": "AAC",
+      "favorite": false,
       "enabled": true
     },
     {
-      "id": "TrancePulse",
+      "id": "trancepulse",
       "name": "TrancePulse",
       "url": "http://stream.trance.ie:8000/tpmixes",
       "genre": "Trance",
+      "bitrate": 1400,
+      "codec": "FLAC",
+      "favorite": true,
       "enabled": true
     },
     {
-      "id": "Radio Club Trance",
+      "id": "radioclubtr",
       "name": "Radio Club Trance",
-      "url": "https://stream.radioclub80.cl:10012/live.flac",
+      "url": "https://stream.radioclubtrance.com/stream",
       "genre": "Trance",
+      "bitrate": 128,
+      "codec": "MP3",
+      "favorite": false,
       "enabled": true
     },
     {
-      "id": "DHECTAR Hits",
+      "id": "dhectar",
       "name": "DHECTAR Hits",
-      "url": "http://manager.dhectar.fr:1110/stream",
-      "genre": "Techno/Electro",
+      "url": "https://stream.dhectar.com/hits",
+      "genre": "Hits",
+      "bitrate": 128,
+      "codec": "MP3",
+      "favorite": false,
       "enabled": true
     },
     {
-      "id": "Intense Radio",
+      "id": "intense",
       "name": "Intense Radio",
-      "url": "http://secure.live-streams.nl/flac.flac",
-      "genre": "Dance",
+      "url": "https://www.intenseradio.com/stream",
+      "genre": "Electronic",
+      "bitrate": 256,
+      "codec": "MP3",
+      "favorite": true,
       "enabled": true
     }
-  ],
-  "last_updated": "2026-03-03"
+  ]
 }

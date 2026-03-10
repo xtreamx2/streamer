@@ -1,0 +1,86 @@
+{
+  "version": "3.0",
+  "alsa_device": "hw:sndrpihifiberry,0",
+  "uart_port": "/dev/ttyAMA0",
+  "uart_baud": 115200,
+  "last_source": "radio",
+  "last_station_id": "trancepulse",
+  "volume": 75,
+  "balance": 0,
+  "loudness": true,
+  "mono": false,
+  "eq": {
+    "radio": [
+      0,
+      2,
+      3,
+      2,
+      0,
+      -1,
+      0,
+      1,
+      2,
+      1
+    ],
+    "bluetooth": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "phono": [
+      3,
+      2,
+      1,
+      0,
+      0,
+      0,
+      -1,
+      -1,
+      0,
+      1
+    ],
+    "line1": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "line2": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "spdif": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

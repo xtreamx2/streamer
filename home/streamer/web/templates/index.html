@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Streamer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0d0f14;
+  --bg2:        #111520;
+  --bg3:        #181d2e;
+  --bg4:        #1e2438;
+  --border:     #252c42;
+  --blue:       #2d8cf0;
+  --blue-dim:   #1a4f8a;
+  --blue-glow:  rgba(45,140,240,0.18);
+  --orange:     #f0820d;
+  --orange-dim: #7a400a;
+  --orange-glow:rgba(240,130,13,0.18);
+  --text:       #e8eaf0;
+  --text2:      #8899bb;
+  --text3:      #4a5270;
+  --green:      #22c55e;
+  --yellow:     #eab308;
+  --red:        #ef4444;
+  --radius:     6px;
+  --font-ui:    'Rajdhani', sans-serif;
+  --font-mono:  'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  display: flex;
+  font-size: 15px;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+#sidebar {
+  width: 64px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 4px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logo svg { width: 32px; height: 32px; }
+
+.nav-btn {
+  width: 48px;
+  height: 52px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  color: var(--text3);
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+.nav-btn:hover { background: var(--bg3); color: var(--text2); }
+.nav-btn.active {
+  background: var(--bg4);
+  color: var(--blue);
+}
+.nav-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 12px; bottom: 12px;
+  width: 3px;
+  background: var(--blue);
+  border-radius: 0 3px 3px 0;
+}
+.nav-btn svg { width: 20px; height: 20px; }
+.nav-btn span {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── MAIN ─────────────────────────────────────────────── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* top bar */
+#topbar {
+  height: 44px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.tb-section {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.tb-sep { color: var(--border); }
+.tb-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tb-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text3);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text3);
+}
+.status-dot.playing { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* content */
+#content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px;
+  display: none;
+}
+.page.active { display: block !important; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── SECTION TITLE ────────────────────────────────────── */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+}
+
+/* ── CARD ─────────────────────────────────────────────── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* ── AMPLIFIER PAGE ───────────────────────────────────── */
+#page-amplifier {
+  display: none;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+}
+#page-amplifier.active { display: grid; }
+
+/* source selector */
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.source-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text3);
+  transition: all 0.15s;
+  font-family: var(--font-ui);
+}
+.source-btn:hover:not(.disabled) {
+  border-color: var(--blue-dim);
+  color: var(--text2);
+  background: var(--bg4);
+}
+.source-btn.active {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: rgba(240,130,13,0.08);
+  box-shadow: 0 0 16px var(--orange-glow);
+}
+.source-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+.source-btn svg { width: 22px; height: 22px; }
+.source-btn .src-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.source-btn .src-sub {
+  font-size: 9px;
+  color: var(--text3);
+}
+.source-btn.active .src-sub { color: var(--orange-dim); }
+
+/* now playing */
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.np-icon {
+  width: 52px; height: 52px;
+  background: var(--bg4);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--orange);
+  flex-shrink: 0;
+}
+.np-icon svg { width: 28px; height: 28px; }
+.np-info { flex: 1; min-width: 0; }
+.np-title {
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.np-sub {
+  font-size: 12px;
+  color: var(--text2);
+  font-family: var(--font-mono);
+}
+.np-transport {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:8px;
+}
+.np-btn {
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--bg4);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:var(--text2);
+  transition:all .12s;
+  font-size:0;
+}
+.np-btn:hover {
+  border-color:var(--blue);
+  color:var(--blue);
+  background:var(--blue-glow);
+}
+
+/* volume */
+.vol-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.vol-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  width: 60px;
+  flex-shrink: 0;
+}
+.vol-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--blue);
+  width: 52px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.slider-wrap {
+  flex: 1;
+  position: relative;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg4);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 10px var(--blue-glow);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+.vol-fill {
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: linear-gradient(90deg, var(--blue-dim), var(--blue));
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* toggles row */
+.toggles-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.toggle-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text2);
+  transition: all 0.15s;
+  user-select: none;
+}
+.toggle-chip:hover { border-color: var(--blue-dim); color: var(--text); }
+.toggle-chip.on {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-glow);
+}
+.toggle-chip svg { width: 14px; height: 14px; }
+
+/* ── VU METER ────────────────────────────────────────── */
+.meter-container {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.meter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.meter-mode-tabs {
+  display: flex;
+  gap: 4px;
+}
+.meter-tab {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  transition: all 0.15s;
+}
+.meter-tab.active {
+  background: var(--bg4);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* VU bars */
+#vu-display { display: flex; gap: 12px; }
+.vu-channel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vu-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  text-transform: uppercase;
+}
+.vu-bar-track {
+  height: 20px;
+  border-radius: 3px;
+  overflow: visible;
+  position: relative;
+  /* gradient leżący zawsze na całej szerokości */
+  background: linear-gradient(to right,
+    #1565c0 0%,
+    #1e88e5 50%,
+    #e6c300 70%,
+    #ff6600 85%,
+    #e53935 100%
+  );
+}
+/* ciemna maska od prawej — zasłania gradient poza poziomem */
+.vu-bar-track::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  background: var(--bg2);
+  border-radius: 0 3px 3px 0;
+  transition: width 0.06s linear;
+  width: var(--vu-mask, 100%);
+}
+.vu-bar-fill {
+  display: none;  /* zastąpiony przez ::after mask */
+}
+.vu-bar-wrap {
+  position: relative;
+}
+.vu-peak {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #ffffff;
+  box-shadow: 0 0 6px #fffc, 0 0 2px #fff;
+  transition: right 0.25s ease-out;
+  z-index: 10;
+  border-radius: 2px;
+}
+.vu-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text3);
+  padding: 0 2px;
+}
+
+/* Spectrum */
+#spectrum-display { display: none; }
+#spectrum-display canvas {
+  width: 100%;
+  height: 120px;
+  display: block;
+  border-radius: 3px;
+}
+
+/* right panel */
+.amp-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* EQ mini */
+.eq-mini {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+  padding: 0 4px;
+}
+.eq-band {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+.eq-track {
+  flex: 1;
+  width: 24px;
+  background: var(--bg3);
+  border-radius: 3px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eq-thumb {
+  width: 18px; height: 6px;
+  background: var(--blue);
+  border-radius: 3px;
+  cursor: pointer;
+  position: absolute;
+}
+.eq-freq {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text3);
+  text-align: center;
+}
+
+/* ── RADIO PAGE ───────────────────────────────────────── */
+.station-list { display: flex; flex-direction: column; gap: 4px; }
+.station-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+}
+.station-item:hover {
+  background: var(--bg3);
+  border-color: var(--border);
+}
+.station-item.playing {
+  background: rgba(45,140,240,0.07);
+  border-color: var(--blue-dim);
+}
+.station-freq {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  width: 36px;
+  flex-shrink: 0;
+}
+.station-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+}
+.station-genre {
+  font-size: 11px;
+  color: var(--text3);
+}
+.station-play-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+.station-play-btn:hover, .station-item.playing .station-play-btn {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-glow);
+}
+.fav-star {
+  color: var(--text3);
+  cursor: pointer;
+  transition: color 0.12s;
+  flex-shrink: 0;
+}
+.fav-star.active { color: var(--orange); }
+
+.add-station {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.input-field {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-field:focus { border-color: var(--blue); }
+.input-field::placeholder { color: var(--text3); }
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg4);
+  color: var(--text2);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+.btn:hover { border-color: var(--blue); color: var(--blue); }
+.btn.primary {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+.btn.primary:hover { background: #3d9cf5; }
+
+/* ── BLUETOOTH PAGE ───────────────────────────────────── */
+.bt-mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.bt-mode-btn {
+  flex: 1;
+  padding: 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text2);
+  transition: all 0.15s;
+  font-family: var(--font-ui);
+}
+.bt-mode-btn.active {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-glow);
+}
+.bt-device {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+}
+.bt-device:hover { background: var(--bg3); border-color: var(--border); }
+.bt-device.connected { border-color: var(--blue-dim); }
+.bt-icon {
+  width: 36px; height: 36px;
+  background: var(--bg4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.bt-device.connected .bt-icon { color: var(--blue); }
+.bt-info { flex: 1; }
+.bt-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.bt-mac { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+.bt-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: var(--blue-glow);
+  border: 1px solid var(--blue-dim);
+  color: var(--blue);
+}
+
+/* ── NETWORK PAGE ─────────────────────────────────────── */
+.net-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.net-status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.net-status-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; }
+.net-status-value { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+.net-status-value.good { color: var(--green); }
+
+.wifi-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+}
+.wifi-item:hover { background: var(--bg3); border-color: var(--border); }
+.wifi-item.connected { border-color: var(--blue-dim); }
+.wifi-name { flex: 1; font-weight: 600; font-size: 14px; }
+.wifi-signal {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 14px;
+}
+.wifi-bar {
+  width: 3px;
+  background: var(--border);
+  border-radius: 1px;
+}
+.wifi-bar:nth-child(1) { height: 4px; }
+.wifi-bar:nth-child(2) { height: 7px; }
+.wifi-bar:nth-child(3) { height: 10px; }
+.wifi-bar:nth-child(4) { height: 14px; }
+.wifi-item.sig4 .wifi-bar { background: var(--green); }
+.wifi-item.sig3 .wifi-bar:not(:nth-child(4)) { background: var(--green); }
+.wifi-item.sig2 .wifi-bar:not(:nth-child(3)):not(:nth-child(4)) { background: var(--yellow); }
+.wifi-item.sig1 .wifi-bar:nth-child(1) { background: var(--red); }
+
+/* ── SETTINGS PAGE ────────────────────────────────────── */
+.eq-full {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 160px;
+  padding: 0 8px 0;
+}
+.eq-full-band {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+.eq-full-track {
+  flex: 1;
+  width: 32px;
+  background: var(--bg3);
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+}
+.eq-full-fill-pos {
+  position: absolute;
+  bottom: 50%;
+  left: 2px; right: 2px;
+  background: linear-gradient(to top, var(--blue-dim), var(--blue));
+  border-radius: 2px 2px 0 0;
+  transition: height 0.1s;
+}
+.eq-full-fill-neg {
+  position: absolute;
+  top: 50%;
+  left: 2px; right: 2px;
+  background: linear-gradient(to bottom, var(--blue-dim), #0a2040);
+  border-radius: 0 0 2px 2px;
+  transition: height 0.1s;
+}
+.eq-full-thumb {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: 22px; height: 8px;
+  background: var(--blue);
+  border-radius: 4px;
+  cursor: grab;
+  box-shadow: 0 0 8px var(--blue-glow);
+  z-index: 2;
+}
+.eq-full-val {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--blue);
+  height: 14px;
+}
+.eq-full-freq {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text3);
+  text-align: center;
+}
+.eq-zero-line {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-label { flex: 1; font-weight: 600; font-size: 14px; }
+.settings-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* toggle switch */
+.toggle-sw {
+  width: 40px; height: 22px;
+  background: var(--bg4);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.toggle-sw.on {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+.toggle-sw::after {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--text3);
+  top: 2px; left: 2px;
+  transition: all 0.2s;
+}
+.toggle-sw.on::after {
+  left: 20px;
+  background: #fff;
+}
+
+/* source tabs for EQ */
+.source-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.source-tab {
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  transition: all 0.15s;
+}
+.source-tab.active {
+  background: var(--bg4);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* two col layout */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* UART status */
+.uart-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text2);
+}
+
+/* responsive */
+@media (max-width: 700px) {
+  #page-amplifier.active { display: flex; flex-direction: column; }
+  .two-col { grid-template-columns: 1fr; }
+  .source-grid { grid-template-columns: repeat(3,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="14" stroke="#2d8cf0" stroke-width="1.5"/>
+      <circle cx="16" cy="16" r="8" stroke="#2d8cf0" stroke-width="1" opacity=".5"/>
+      <circle cx="16" cy="16" r="3" fill="#f0820d"/>
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#2d8cf0" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <button class="nav-btn active" onclick="showPage('amplifier',this)" title="Amplifier">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    </svg>
+    <span>AMP</span>
+  </button>
+
+  <button class="nav-btn" onclick="showPage('radio',this)" title="Radio">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
+      <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+      <circle cx="12" cy="12" r="2"/>
+      <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+      <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
+    </svg>
+    <span>RADIO</span>
+  </button>
+
+  <button class="nav-btn" onclick="showPage('bluetooth',this)" title="Bluetooth">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/>
+    </svg>
+    <span>BT</span>
+  </button>
+
+  <button class="nav-btn" onclick="showPage('inputs',this)" title="Inputs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <line x1="8" y1="6" x2="21" y2="6"/>
+      <line x1="8" y1="12" x2="21" y2="12"/>
+      <line x1="8" y1="18" x2="21" y2="18"/>
+      <line x1="3" y1="6" x2="3.01" y2="6"/>
+      <line x1="3" y1="12" x2="3.01" y2="12"/>
+      <line x1="3" y1="18" x2="3.01" y2="18"/>
+    </svg>
+    <span>IN</span>
+  </button>
+
+  <button class="nav-btn" onclick="showPage('network',this)" title="Network">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+      <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <circle cx="12" cy="20" r="1" fill="currentColor"/>
+    </svg>
+    <span>NET</span>
+  </button>
+
+  <button class="nav-btn" onclick="showPage('settings',this)" title="Settings" style="margin-top:auto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    <span>SET</span>
+  </button>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <span class="tb-section" id="tb-section">Amplifier</span>
+    <span class="tb-sep">·</span>
+    <span class="tb-meta" id="tb-meta">RMF FM — Alan Morris · Coldplay — The Scientist</span>
+    <div class="tb-status">
+      <div class="status-dot playing" id="status-dot"></div>
+      <span id="status-text">Playing</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ══════════════ AMPLIFIER PAGE ══════════════ -->
+    <div class="page active" id="page-amplifier">
+
+      <!-- LEFT COLUMN -->
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+
+        <!-- Source selector -->
+        <div class="card" style="padding:16px;">
+          <div class="section-title">Source</div>
+          <div class="source-grid">
+            <button class="source-btn active" onclick="setSource(this,'radio')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+              <span class="src-label">Radio</span>
+              <span class="src-sub">Internet</span>
+            </button>
+            <button class="source-btn" onclick="setSource(this,'bluetooth')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+              <span class="src-label">BT</span>
+              <span class="src-sub">Sink</span>
+            </button>
+            <button class="source-btn" onclick="setSource(this,'phono')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
+              <span class="src-label">Phono</span>
+              <span class="src-sub">RIAA</span>
+            </button>
+            <button class="source-btn" onclick="setSource(this,'line')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+              <span class="src-label">Line</span>
+              <span class="src-sub">Analog</span>
+            </button>
+            <button class="source-btn disabled" onclick="setSource(this,'spdif')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12h20M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
+              <span class="src-label">S/PDIF</span>
+              <span class="src-sub">Digital</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Now playing -->
+        <div class="now-playing">
+          <div class="np-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="np-info">
+            <div class="np-title" id="np-title">Coldplay — The Scientist</div>
+            <div class="np-sub" id="np-sub">RMF FM &nbsp;·&nbsp; 128 kbps &nbsp;·&nbsp; AAC</div>
+          </div>
+          <div class="np-transport">
+            <button class="np-btn" onclick="ampPrev()" title="Previous">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="11 5 4 12 11 19 11 5"/>
+                <polygon points="19 5 12 12 19 19 19 5"/>
+              </svg>
+            </button>
+            <button class="np-btn" onclick="ampPlay()" title="Play">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="6 4 20 12 6 20 6 4"/>
+              </svg>
+            </button>
+            <button class="np-btn" onclick="ampStop()" title="Stop">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+              </svg>
+            </button>
+            <button class="np-btn" onclick="ampNext()" title="Next">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="13 5 20 12 13 19 13 5"/>
+                <polygon points="5 5 12 12 5 19 5 5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Volume -->
+        <div class="card">
+          <div class="vol-row" style="margin-bottom:16px;">
+            <span class="vol-label">Volume</span>
+            <div class="slider-wrap">
+              <div class="vol-fill" id="vol-fill" style="width:72%"></div>
+              <input type="range" min="0" max="100" value="72" id="vol-slider" oninput="updateVolume(this.value)">
+            </div>
+            <span class="vol-value" id="vol-value">72</span>
+          </div>
+
+        <!-- Toggles -->
+        <div class="card" style="padding:14px 20px;">
+          <div class="toggles-row">
+            <div class="toggle-chip on" onclick="toggleChip(this,'vu')" id="chip-vu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="3" height="8" rx="1" fill="currentColor" stroke="none"/><rect x="7" y="5" width="3" height="11" rx="1" fill="currentColor" stroke="none"/><rect x="12" y="3" width="3" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="17" y="6" width="3" height="10" rx="1" fill="currentColor" stroke="none"/></svg>
+              VU Meter
+            </div>
+            <div class="toggle-chip" onclick="toggleChip(this,'spectrum')" id="chip-spectrum">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Spectrum
+            </div>
+            <div class="toggle-chip on" onclick="toggleChip(this,'loudness')" id="chip-loudness">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              Loudness
+            </div>
+          </div>
+        </div>
+
+        <!-- Meter (VU / Spectrum) -->
+        <div class="meter-container" id="meter-container">
+          <div class="meter-header">
+            <div class="section-title" style="margin:0">Level Meter</div>
+            <div class="meter-mode-tabs">
+              <div class="meter-tab active" onclick="setMeterMode('vu',this)">VU</div>
+              <div class="meter-tab" onclick="setMeterMode('spectrum',this)">Spectrum</div>
+            </div>
+          </div>
+
+          <div id="vu-display">
+            <div class="vu-channel">
+              <div class="vu-label">L</div>
+              <div class="vu-bar-wrap">
+                <div class="vu-bar-track" id="vu-tl">
+                  <div class="vu-bar-fill" id="vu-l"></div>
+                </div>
+                <div class="vu-peak" id="vu-lp" style="right:100%"></div>
+              </div>
+              <div class="vu-scale"><span>-40</span><span>-20</span><span>-10</span><span>-6</span><span>-3</span><span>0</span></div>
+            </div>
+            <div class="vu-channel">
+              <div class="vu-label">R</div>
+              <div class="vu-bar-wrap">
+                <div class="vu-bar-track" id="vu-tr">
+                  <div class="vu-bar-fill" id="vu-r"></div>
+                </div>
+                <div class="vu-peak" id="vu-rp" style="right:100%"></div>
+              </div>
+              <div class="vu-scale"><span>-40</span><span>-20</span><span>-10</span><span>-6</span><span>-3</span><span>0</span></div>
+            </div>
+          </div>
+
+          <div id="spectrum-display">
+            <canvas id="spectrum-canvas" style="width:100%;height:120px;display:block;"></canvas>
+          </div>
+        </div>
+
+      </div><!-- /left col -->
+
+      <!-- RIGHT COLUMN -->
+      <div class="amp-right">
+
+        <!-- EQ mini preview -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="section-title" style="margin:0">Equalizer</div>
+            <button class="btn" style="padding:4px 10px;font-size:11px;" onclick="showPage('settings', document.querySelectorAll('.nav-btn')[5])">Edit</button>
+          </div>
+          <div class="eq-mini" id="eq-mini-display"></div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card">
+          <div class="section-title">Quick Actions</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <button class="btn" style="width:100%;padding:10px;text-align:left;display:flex;align-items:center;gap:10px;" onclick="showPage('radio', document.querySelectorAll('.nav-btn')[1])">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><circle cx="12" cy="12" r="2"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+              Browse Stations
+            </button>
+            <button class="btn" style="width:100%;padding:10px;text-align:left;display:flex;align-items:center;gap:10px;" onclick="showPage('bluetooth', document.querySelectorAll('.nav-btn')[2])">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+              Manage Bluetooth
+            </button>
+          </div>
+        </div>
+
+        <!-- System info -->
+        <div class="card" style="padding:16px 20px;">
+          <div class="section-title">System</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--text3)">IP</span>
+              <span id="sys-ip" style="font-family:var(--font-mono);font-size:12px;">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--text3)">CPU Temp</span>
+              <span id="sys-temp" style="font-family:var(--font-mono);font-size:12px;">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--text3)">CPU Load</span>
+              <span id="sys-load" style="font-family:var(--font-mono);font-size:12px;">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--text3)">Panel</span>
+              <div class="uart-indicator" id="uart-status">
+                <div class="status-dot"></div>
+                <span>Disconnected</span>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--text3)">Uptime</span>
+              <span id="sys-uptime" style="font-family:var(--font-mono);font-size:12px;">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /right -->
+    </div><!-- /amp-inner -->
+    </div><!-- /amplifier -->
+
+
+    <!-- ══════════════ RADIO PAGE ══════════════ -->
+    <div class="page" id="page-radio">
+      <div class="two-col">
+        <div>
+          <div class="section-title">Stations</div>
+          <div class="station-list" id="station-list"></div>
+          <div class="card" style="margin-top:16px;">
+            <div class="section-title">Add Station</div>
+            <div class="add-station">
+              <input type="text" class="input-field" id="new-station-name" placeholder="Name">
+              <input type="text" class="input-field" id="new-station-url" placeholder="Stream URL" style="flex:2">
+              <button class="btn primary" onclick="addStation()">Add</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Favourites</div>
+          <div class="station-list" id="fav-list"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════ BLUETOOTH PAGE ══════════════ -->
+    <div class="page" id="page-bluetooth">
+      <div class="bt-mode-row">
+        <button class="bt-mode-btn active" onclick="setBtMode('sink',this)">📱 → 🔊 Sink (receive audio)</button>
+        <button class="bt-mode-btn" onclick="setBtMode('source',this)">🔊 → 📢 Source (send audio)</button>
+      </div>
+      <div class="two-col">
+        <div>
+          <div class="section-title">Paired Devices</div>
+          <div id="paired-devices">
+            <div style="font-size:12px;color:var(--text3);padding:8px 0;">Loading...</div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="section-title" style="margin:0">Nearby Devices</div>
+            <button class="btn" onclick="scanBt()" id="bt-scan-btn">Scan</button>
+          </div>
+          <div id="bt-scan-results">
+            <div style="font-size:12px;color:var(--text3);padding:8px 0;">Press Scan to discover devices</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════ INPUTS PAGE ══════════════ -->
+    <div class="page" id="page-inputs">
+      <div class="section-title">Analog Inputs</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('phono')">
+          <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--orange);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
+          </div>
+          <div style="flex:1"><div style="font-weight:600;font-size:15px;">Phono</div><div style="font-size:12px;color:var(--text3);">RIAA EQ · PCM1808</div></div>
+          <span style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.06em;">ACTIVE</span>
+        </div>
+        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('line1')">
+          <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+          </div>
+          <div style="flex:1"><div style="font-weight:600;font-size:15px;">Line In 1</div><div style="font-size:12px;color:var(--text3);">PCM1808</div></div>
+        </div>
+        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('line2')">
+          <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+          </div>
+          <div style="flex:1"><div style="font-weight:600;font-size:15px;">Line In 2</div><div style="font-size:12px;color:var(--text3);">PCM1808</div></div>
+        </div>
+      </div>
+      <div class="section-title">Digital Input</div>
+      <div class="card" style="display:flex;align-items:center;gap:16px;padding:16px 20px;opacity:0.4;">
+        <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text3);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12h20M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
+        </div>
+        <div><div style="font-weight:600;font-size:15px;">S/PDIF</div><div style="font-size:12px;color:var(--text3);">Not implemented</div></div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════ NETWORK PAGE ══════════════ -->
+    <div class="page" id="page-network">
+      <div class="net-status-bar">
+        <div class="net-status-item"><span class="net-status-label">Status</span><span class="net-status-value" id="net-status-val">—</span></div>
+        <div class="net-status-item"><span class="net-status-label">SSID</span><span class="net-status-value" id="net-ssid-val">—</span></div>
+        <div class="net-status-item"><span class="net-status-label">IP Address</span><span class="net-status-value" id="net-ip-val" style="font-family:var(--font-mono)">—</span></div>
+        <div class="net-status-item"><span class="net-status-label">Signal</span><span class="net-status-value" id="net-signal-val">—</span></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="section-title" style="margin:0">Available Networks</div>
+        <button class="btn" onclick="scanWifi()">Scan</button>
+      </div>
+      <div id="wifi-list"><span style="font-size:12px;color:var(--text3)">Press Scan to search for networks</span></div>
+    </div>
+
+
+    <!-- ══════════════ SETTINGS PAGE ══════════════ -->
+    <div class="page" id="page-settings">
+      <div class="two-col">
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="section-title">Equalizer</div>
+            <div class="source-tabs">
+              <div class="source-tab active" onclick="selectEqSource('radio',this)">Radio</div>
+              <div class="source-tab" onclick="selectEqSource('bt',this)">BT</div>
+              <div class="source-tab" onclick="selectEqSource('phono',this)">Phono</div>
+              <div class="source-tab" onclick="selectEqSource('line',this)">Line</div>
+            </div>
+            <div class="eq-full" id="eq-full"></div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button class="btn" onclick="resetEq()">Reset</button>
+              <button class="btn" onclick="setEqPreset('flat')">Flat</button>
+              <button class="btn" onclick="setEqPreset('bass')">Bass+</button>
+              <button class="btn" onclick="setEqPreset('vocal')">Vocal</button>
+              <button class="btn" onclick="setEqPreset('treble')">Treble+</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="section-title">Audio</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Loudness</div><div class="settings-sub">Bass/treble boost at low volumes</div></div>
+              <div class="toggle-sw on" id="sw-loudness" onclick="toggleSw(this,'loudness')"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Auto Gain</div><div class="settings-sub">Normalize volume between sources</div></div>
+              <div class="toggle-sw" id="sw-autogain" onclick="toggleSw(this,'autogain')"></div>
+            </div>
+              <div class="toggle-sw" id="sw-mono" onclick="toggleSw(this,'mono')"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title">System</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Panel (RP2040)</div><div class="settings-sub">UART /dev/ttyAMA0 · 115200</div></div>
+              <div class="uart-indicator"><div class="status-dot playing"></div><span style="font-size:12px;font-family:var(--font-mono);">OK</span></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">ALSA Device</div><div class="settings-sub">hw:sndrpihifiberry,0</div></div>
+              <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);">PCM5102</span>
+            </div>
+            <div class="settings-row" style="border-bottom:none;">
+              <div class="settings-label">Reboot</div>
+              <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/reboot',{method:'POST'})">Reboot</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+/* ── State ─────────────────────────────────────── */
+const state = {
+  source: 'radio',
+  volume: 75,
+  eqSource: 'radio',
+  eqValues: {
+    radio:      [0, 2, 3, 2, 0,-1, 0, 1, 2, 1],
+    bluetooth:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    phono:      [3, 2, 1, 0, 0, 0,-1,-1, 0, 1],
+    line1:      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    line2:      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  },
+  stations: [],
+  currentStation: null,
+};
+const EQ_FREQS = ['31','63','125','250','500','1k','2k','4k','8k','16k'];
+
+/* ── API ─────────────────────────────────────────── */
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch('/api' + path, opts);
+    return r.json();
+  } catch(e) { console.error('API error', path, e); return {}; }
+}
+
+/* ── Navigation ──────────────────────────────────── */
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const titles = { amplifier:'Amplifier', radio:'Radio', bluetooth:'Bluetooth',
+                   inputs:'Inputs', network:'Network', settings:'Settings' };
+  document.getElementById('tb-section').textContent = titles[id] || id;
+  if (id === 'bluetooth') loadPairedDevices();
+}
+async function loadPairedDevices() {
+  const data = await api('/bluetooth/devices');
+  const el = document.getElementById('paired-devices');
+  if (!el) return;
+  const paired = (data.devices || data.paired || []).filter(d => d.paired);
+  if (!paired.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No paired devices</div>';
+    return;
+  }
+  el.innerHTML = paired.map(d => `
+    <div class="bt-device ${d.connected?'connected':''}" style="margin-bottom:6px;gap:8px;">
+      <div class="bt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+      <div class="bt-info" style="flex:1"><div class="bt-name">${d.name||d.mac}</div><div class="bt-mac">${d.mac}</div></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        ${d.connected
+          ? `<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green);color:#000;" onclick="btDisconnect('${d.mac}',this)">Disconnect</button>`
+          : `<button class="btn" style="font-size:11px;padding:4px 10px;" onclick="btConnectOrPair('${d.mac}','1',this)">Connect</button>`}
+        <button class="btn" style="font-size:11px;padding:4px 8px;background:transparent;border:1px solid var(--red);color:var(--red);" onclick="btUnpair('${d.mac}',this)" title="Unpair">✕</button>
+      </div>
+    </div>`).join('');
+}
+async function btDisconnect(mac, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  await api('/bluetooth/disconnect','POST',{mac});
+  loadPairedDevices();
+}
+async function btUnpair(mac, btn) {
+  if (!confirm('Unpair ' + mac + '?')) return;
+  btn.disabled = true;
+  await api('/bluetooth/unpair','POST',{mac});
+  loadPairedDevices();
+}
+
+/* ── Source ──────────────────────────────────────── */
+async function setSource(btn, src) {
+  if (btn.classList.contains('disabled')) return;
+  document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.source = src;
+  await api('/source','POST',{source: src});
+}
+function setSourceFromInput(src) {
+  state.source = src;
+  document.querySelectorAll('.source-btn').forEach(b => {
+    b.classList.toggle('active', (b.getAttribute('onclick')||'').includes("'"+src+"'"));
+  });
+  showPage('amplifier', document.querySelector('.nav-btn'));
+}
+
+/* ── Volume ──────────────────────────────────────── */
+function updateVolume(v) {
+  state.volume = +v;
+  document.getElementById('vol-value').textContent = v;
+  document.getElementById('vol-fill').style.width = v + '%';
+  clearTimeout(updateVolume._t);
+  updateVolume._t = setTimeout(() => api('/volume','POST',{volume:+v}), 200);
+}
+
+/* ── Toggles ─────────────────────────────────────── */
+function toggleChip(el, key) {
+  el.classList.toggle('on');
+  if (key === 'vu' || key === 'spectrum') {
+    const vuOn = document.getElementById('chip-vu').classList.contains('on');
+    const spOn = document.getElementById('chip-spectrum').classList.contains('on');
+    const active = vuOn || spOn;
+    document.getElementById('meter-container').style.display = active ? '' : 'none';
+    if (active) {
+      const mode = spOn ? 'spectrum' : 'vu';
+      setMeterMode(mode, document.querySelector(mode==='spectrum' ? '.meter-tab:last-child' : '.meter-tab'));
+    } else { stopSpectrum(); }
+  }
+  if (key === 'loudness') {
+    const on = el.classList.contains('on');
+    const sw = document.getElementById('sw-loudness');
+    if (sw) sw.classList.toggle('on', on);
+    api('/setting','POST',{key:'loudness', value: on});
+  }
+}
+function toggleSw(el, key) {
+  el.classList.toggle('on');
+  const on = el.classList.contains('on');
+  if (key === 'loudness') {
+    const chip = document.getElementById('chip-loudness');
+    if (chip) chip.classList.toggle('on', on);
+    api('/setting','POST',{key:'loudness', value: on});
+  } else if (key === 'mono' || key === 'autogain') {
+    api('/setting','POST',{key: key, value: on});
+  }
+}
+
+/* ── Meter ───────────────────────────────────────── */
+function setMeterMode(mode, btn) {
+  document.querySelectorAll('.meter-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('vu-display').style.display = mode === 'vu' ? 'flex' : 'none';
+  document.getElementById('spectrum-display').style.display = mode === 'spectrum' ? '' : 'none';
+  if (mode === 'spectrum' || mode === 'vu') startSpectrum(); else stopSpectrum();
+}
+
+/* VU meter — dane z GStreamer /api/level */
+let _vuTimer = null;
+
+function resetMeters() {
+  _setVU(-60, -60, -60, -60);
+}
+
+function _setVU(rmsL, rmsR, peakL, peakR) {
+  const toP = db => Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+  const tL = document.getElementById('vu-tl');
+  const tR = document.getElementById('vu-tr');
+  const lp = document.getElementById('vu-lp');
+  const rp = document.getElementById('vu-rp');
+  if (!tL) return;
+  tL.style.setProperty('--vu-mask', (100 - toP(rmsL)) + '%');
+  tR.style.setProperty('--vu-mask', (100 - toP(rmsR)) + '%');
+  if (lp) lp.style.right = (100 - toP(peakL)) + '%';
+  if (rp) rp.style.right = (100 - toP(peakR)) + '%';
+}
+
+async function _vuPoll() {
+  try {
+    const d = await api('/level');
+    if (d) _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
+  } catch(e) {}
+}
+
+/* ── Spectrum analyser (pseudo-FFT z RMS) ── */
+let _specBands = new Float32Array(32).fill(-60);
+let _specPeaks = new Float32Array(32).fill(-60);
+let _specPeakTtl = new Uint8Array(32).fill(0);
+let _specRaf = null;
+let _specTimer = null;
+let _specLastLevel = {rms_l:-60, rms_r:-60, peak_l:-60, peak_r:-60};
+let _specLastBands = new Array(32).fill(-60);
+
+function _specDraw() {
+  const canvas = document.getElementById('spectrum-canvas');
+  if (!canvas || canvas.offsetParent === null) { _specRaf = requestAnimationFrame(_specDraw); return; }
+  // Dopasuj rozdzielczość do rozmiaru wyświetlanego
+  const W = canvas.offsetWidth || 300, H = 120;
+  if (canvas.width !== W || canvas.height !== H) { canvas.width=W; canvas.height=H; }
+  const ctx = canvas.getContext('2d');
+  const n = _specBands.length;
+  const gap = 2, bw = (W - gap*(n-1)) / n;
+
+  // Użyj prawdziwych danych FFT z GStreamer spectrum lub fallback RMS
+  const hasFft = _specLastBands && _specLastBands[0] > -59;
+  const avgRms = (_specLastLevel.rms_l + _specLastLevel.rms_r) / 2;
+  for (let i = 0; i < n; i++) {
+    let target;
+    if (hasFft) {
+      target = _specLastBands[i] || -60;
+    } else {
+      const pos = i / (n-1);
+      const shape = -8 * Math.pow(pos - 0.35, 2) + 2 + Math.sin(pos * Math.PI) * 4;
+      target = avgRms + shape + (Math.random() * 6 - 3);
+    }
+    // Szybkie wznoszenie, wolne opadanie
+    if (target > _specBands[i]) _specBands[i] += (target - _specBands[i]) * 0.6;
+    else                          _specBands[i] += (target - _specBands[i]) * 0.15;
+    _specBands[i] = Math.max(-60, Math.min(0, _specBands[i]));
+    // Peak hold
+    if (_specBands[i] >= _specPeaks[i]) { _specPeaks[i] = _specBands[i]; _specPeakTtl[i] = 18; }
+    else if (_specPeakTtl[i] > 0) _specPeakTtl[i]--;
+    else _specPeaks[i] -= 0.8;
+    _specPeaks[i] = Math.max(-62, _specPeaks[i]);
+  }
+
+  ctx.clearRect(0, 0, W, H);
+
+  for (let i = 0; i < n; i++) {
+    const x = i * (bw + gap);
+    const pct = Math.max(0, (_specBands[i] + 60) / 60);
+    const h = pct * H;
+    const y = H - h;
+    // Kolor gradientu jak VU
+    const grad = ctx.createLinearGradient(0, H, 0, 0);
+    grad.addColorStop(0,    '#1565c0');
+    grad.addColorStop(0.5,  '#1e88e5');
+    grad.addColorStop(0.70, '#e6c300');
+    grad.addColorStop(0.85, '#ff6600');
+    grad.addColorStop(1.0,  '#e53935');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, bw, h);
+    // Peak tick — biały
+    const pp = Math.max(0, (_specPeaks[i] + 60) / 60);
+    const py = H - pp * H;
+    if (pp > 0.01) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillRect(x, py - 2, bw, 2);
+    }
+  }
+  _specRaf = requestAnimationFrame(_specDraw);
+}
+
+function startSpectrum() {
+  if (_vuTimer) return;
+  // Jeden request co 100ms — level + spectrum razem
+  _vuTimer = setInterval(async () => {
+    try {
+      const d = await api('/meters');
+      if (d) {
+        _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
+        _specLastLevel = d;
+        if (d.bands) _specLastBands = d.bands;
+      }
+    } catch(e) {}
+  }, 100);
+  if (!_specRaf) _specDraw();
+}
+function stopSpectrum() {
+  if (_vuTimer) { clearInterval(_vuTimer); _vuTimer = null; }
+  if (_specRaf) { cancelAnimationFrame(_specRaf); _specRaf = null; }
+  resetMeters();
+}
+
+/* ── EQ ──────────────────────────────────────────── */
+function buildEqMini() {
+  const vals = state.eqValues[state.source] || Array(10).fill(0);
+  const c = document.getElementById('eq-mini-display');
+  if (!c) return;
+  c.innerHTML = EQ_FREQS.map((f,i) => {
+    const v=vals[i]||0, pct=50-(v/12)*46;
+    return `<div class="eq-band"><div class="eq-track"><div class="eq-zero-line"></div><div class="eq-thumb" style="bottom:${100-pct}%"></div></div><div class="eq-freq">${f}</div></div>`;
+  }).join('');
+}
+function buildEqFull() {
+  const vals = state.eqValues[state.eqSource] || Array(10).fill(0);
+  const c = document.getElementById('eq-full');
+  if (!c) return;
+  c.innerHTML = EQ_FREQS.map((f,i) => {
+    const v=vals[i]||0;
+    const posH=v>0?(v/12)*45:0, negH=v<0?(Math.abs(v)/12)*45:0, thumbBot=50-(v/12)*45;
+    return `<div class="eq-full-band">
+      <div class="eq-full-val">${v>0?'+':''}${v}</div>
+      <div class="eq-full-track" onmousedown="eqDragStart(event,${i})">
+        <div class="eq-zero-line"></div>
+        <div class="eq-full-fill-pos" style="height:${posH}%"></div>
+        <div class="eq-full-fill-neg" style="height:${negH}%"></div>
+        <div class="eq-full-thumb" style="bottom:${thumbBot}%"></div>
+      </div>
+      <div class="eq-full-freq">${f}</div>
+    </div>`;
+  }).join('');
+}
+
+let eqDrag=null;
+function eqDragStart(e,band){
+  eqDrag={band,startY:e.clientY,startVal:state.eqValues[state.eqSource][band]};
+  document.addEventListener('mousemove',eqDragMove);
+  document.addEventListener('mouseup',eqDragEnd);
+}
+function eqDragMove(e){
+  if(!eqDrag) return;
+  const dv=Math.round((eqDrag.startY-e.clientY)/5);
+  state.eqValues[state.eqSource][eqDrag.band]=Math.max(-12,Math.min(12,eqDrag.startVal+dv));
+  buildEqFull(); buildEqMini();
+}
+function eqDragEnd(){
+  if(!eqDrag) return;
+  eqDrag=null;
+  document.removeEventListener('mousemove',eqDragMove);
+  document.removeEventListener('mouseup',eqDragEnd);
+  api('/eq/'+state.eqSource,'POST',{gains:state.eqValues[state.eqSource]});
+}
+function selectEqSource(src,btn){
+  state.eqSource=src;
+  document.querySelectorAll('.source-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  buildEqFull();
+}
+function resetEq(){
+  state.eqValues[state.eqSource]=Array(10).fill(0);
+  buildEqFull(); buildEqMini();
+  api('/eq/'+state.eqSource,'POST',{gains:Array(10).fill(0)});
+}
+const PRESETS={
+  flat:[0,0,0,0,0,0,0,0,0,0], bass:[6,5,4,2,0,0,0,0,0,0],
+  vocal:[-1,-1,0,2,4,4,3,1,0,-1], treble:[0,0,0,0,0,1,2,4,5,6]
+};
+function setEqPreset(p){
+  state.eqValues[state.eqSource]=[...PRESETS[p]];
+  buildEqFull(); buildEqMini();
+  api('/eq/'+state.eqSource,'POST',{gains:PRESETS[p]});
+}
+
+/* ── Stations ────────────────────────────────────── */
+function buildStations() {
+  const list=document.getElementById('station-list');
+  const favList=document.getElementById('fav-list');
+  if(list) list.innerHTML='';
+  if(favList) favList.innerHTML='';
+  if (state.stations.length) {
+    state.stations.forEach(s=>{
+      if(list) list.appendChild(stationEl(s));
+      if(s.fav && favList) favList.appendChild(stationEl(s));
+    });
+  } else {
+    if (list) list.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No stations defined</div>';
+  }
+  if(favList && !favList.children.length)
+    favList.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No favourites yet</div>';
+}
+function stationEl(s) {
+  const div=document.createElement('div');
+  div.className='station-item'+(s.id===state.currentStation?' playing':'');
+  div.innerHTML=`
+    <span class="station-freq">${String(s.id).padStart?String(s.id).substring(0,6):s.id}</span>
+    <span class="station-name">${s.name}</span>
+    <span class="station-genre">${s.genre||''}</span>
+    <div class="fav-star${s.fav?' active':''}" onclick="toggleFav('${s.id}',event)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="${s.fav?'var(--orange)':'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </div>
+    <div class="station-play-btn" onclick="playStation('${s.id}',event)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    </div>`;
+  return div;
+}
+async function playStation(id, e) {
+  e && e.stopPropagation();
+  state.currentStation = id;
+  const s = state.stations.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('np-title').textContent = s.name;
+  document.getElementById('np-sub').textContent = s.name + '  ·  ' + (s.bitrate||128) + ' kbps  ·  ' + (s.codec||'MP3');
+  document.getElementById('tb-meta').textContent = s.name;
+  document.getElementById('status-dot').className = 'status-dot playing';
+  document.getElementById('status-text').textContent = 'Buffering...';
+  buildStations();
+  await api('/radio/play','POST',{id});
+}
+async function toggleFav(id, e) {
+  e && e.stopPropagation();
+  const s = state.stations.find(x => x.id === id);
+  if (!s) return;
+  s.fav = !s.fav;
+  buildStations();
+  await api('/radio/stations/'+id+'/favorite','POST',{add: s.fav});
+}
+async function addStation() {
+  const name=document.getElementById('new-station-name').value.trim();
+  const url=document.getElementById('new-station-url').value.trim();
+  if (!name || !url) return;
+  const res = await api('/radio/stations','POST',{name,url,genre:'Custom'});
+  if (res.station) {
+    state.stations.push({id:res.station.id,name:res.station.name,url:res.station.url,
+      genre:res.station.genre||'Custom',fav:false,bitrate:128,codec:'MP3'});
+    document.getElementById('new-station-name').value='';
+    document.getElementById('new-station-url').value='';
+    buildStations();
+  }
+}
+
+/* ── Transport z karty AMP ───────────────────────── */
+function _currentStationIndex() {
+  if (!state.stations.length) return -1;
+  if (!state.currentStation) return 0;
+  const idx = state.stations.findIndex(s => s.id === state.currentStation);
+  return idx >= 0 ? idx : 0;
+}
+async function ampPlay() {
+  if (!state.stations.length) return;
+  const idx = _currentStationIndex();
+  const s = state.stations[idx];
+  if (!s) return;
+  await playStation(s.id);
+}
+async function ampNext() {
+  if (!state.stations.length) return;
+  let idx = _currentStationIndex();
+  idx = (idx + 1) % state.stations.length;
+  const s = state.stations[idx];
+  if (!s) return;
+  await playStation(s.id);
+}
+async function ampPrev() {
+  if (!state.stations.length) return;
+  let idx = _currentStationIndex();
+  idx = (idx - 1 + state.stations.length) % state.stations.length;
+  const s = state.stations[idx];
+  if (!s) return;
+  await playStation(s.id);
+}
+async function ampStop() {
+  await api('/radio/stop','POST');
+  const dot=document.getElementById('status-dot');
+  const txt=document.getElementById('status-text');
+  if(dot) dot.className='status-dot';
+  if(txt) txt.textContent='stopped';
+  const npSub=document.getElementById('np-sub');
+  if (npSub) npSub.textContent='Stopped';
+  isPlaying=false;
+  resetMeters();
+}
+
+/* ── Bluetooth ───────────────────────────────────── */
+async function setBtMode(mode, btn) {
+  document.querySelectorAll('.bt-mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  await api('/bluetooth/mode','POST',{mode});
+}
+async function scanBt() {
+  const btn=document.getElementById('bt-scan-btn');
+  btn.innerHTML='<span style="color:var(--blue)">Scanning…</span>';
+  await api('/bluetooth/scan','POST');
+  let tries=6;
+  const poll=setInterval(async()=>{
+    const data=await api('/bluetooth/devices');
+    renderBtScan(data);
+    if(--tries<=0){clearInterval(poll);btn.innerHTML='Scan';}
+  },2000);
+}
+function renderBtScan(data) {
+  const el=document.getElementById('bt-scan-results');
+  if (!el) return;
+  const all = data.paired || [];
+  const unconnected = all.filter(d=>!d.connected);
+  if (!unconnected.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3)">No new devices found</div>';
+    return;
+  }
+  el.innerHTML=unconnected.map(d=>`
+    <div class="bt-device" style="margin-top:4px;">
+      <div class="bt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+      <div class="bt-info"><div class="bt-name">${d.name}</div><div class="bt-mac">${d.mac}</div></div>
+      <button class="btn" style="font-size:11px;padding:4px 10px;"
+        onclick="btConnectOrPair('${d.mac}','${d.paired?'1':'0'}',this)">
+        ${d.paired?'Connect':'Pair'}
+      </button>
+    </div>`).join('');
+}
+async function btConnectOrPair(mac, isPaired, btn) {
+  btn.textContent = isPaired==='1' ? 'Connecting…' : 'Pairing…';
+  const endpoint = isPaired==='1' ? '/bluetooth/connect' : '/bluetooth/pair';
+  const r = await api(endpoint,'POST',{mac});
+  btn.textContent = (r.status==='connected'||r.status==='paired') ? '✓ OK' : 'Error';
+}
+
+/* ── Network ─────────────────────────────────────── */
+async function scanWifi() {
+  const data=await api('/network/scan');
+  const list=document.getElementById('wifi-list');
+  if (!list||!data.networks) return;
+  list.innerHTML=data.networks.map(n=>{
+    const sig=n.signal>75?'sig4':n.signal>50?'sig3':n.signal>25?'sig2':'sig1';
+    return `<div class="wifi-item ${sig} ${n.in_use?'connected':''}" style="margin-top:4px;">
+      <span class="wifi-name" style="${n.in_use?'color:var(--blue)':''}">${n.ssid}</span>
+      <div class="wifi-signal"><div class="wifi-bar"></div><div class="wifi-bar"></div><div class="wifi-bar"></div><div class="wifi-bar"></div></div>
+      ${n.in_use?'<span style="font-size:11px;color:var(--blue);font-weight:700;">✓</span>'
+        :`<button class="btn" style="font-size:11px;padding:4px 10px;" onclick="connectWifi('${n.ssid}',this)">Connect</button>`}
+    </div>`;
+  }).join('');
+}
+async function connectWifi(ssid, btn) {
+  const pw=prompt('Password for "'+ssid+'" (empty = open network):');
+  if (pw===null) return;
+  btn.textContent='Connecting…';
+  const r=await api('/network/connect','POST',{ssid,password:pw});
+  btn.textContent=r.status==='connected'?'Connected ✓':'Error';
+}
+
+/* ── Apply status from API ───────────────────────── */
+function applyStatus(data) {
+  // Volume
+  if (data.volume!=null) {
+    const sl=document.getElementById('vol-slider');
+    if(sl) sl.value=data.volume;
+    document.getElementById('vol-value').textContent=data.volume;
+    document.getElementById('vol-fill').style.width=data.volume+'%';
+    state.volume=data.volume;
+  }
+  // Settings toggles
+  if (data.loudness != null) {
+    const chip=document.getElementById('chip-loudness');
+    const sw=document.getElementById('sw-loudness');
+    if(chip) chip.classList.toggle('on', data.loudness);
+    if(sw)   sw.classList.toggle('on', data.loudness);
+  }
+  // Active source buttons
+  if (data.active) {
+    state.source=data.active;
+    document.querySelectorAll('.source-btn').forEach(b=>{
+      b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'"+data.active+"'"));
+    });
+  }
+  // Now playing / metadata
+  const st=data.status||{};
+  const title=st.title||st.station||'';
+  if (title) {
+    const npTitle=document.getElementById('np-title');
+    const npSub=document.getElementById('np-sub');
+    if (npTitle) npTitle.textContent=title;
+
+    let subParts=[];
+    if (st.station) subParts.push(st.station);
+    const stream=st.stream||{};
+    if (stream.bitrate_kbps) subParts.push(stream.bitrate_kbps+' kbps');
+    if (stream.codec) subParts.push(stream.codec);
+    if (!subParts.length) subParts.push((st.station||data.active||''),(st.state||''));
+    if (npSub) npSub.textContent=subParts.filter(Boolean).join('  ·  ');
+
+    document.getElementById('tb-meta').textContent=title;
+  }
+  // Playing dot / meter gating
+  const playing=st.state==='playing'||st.state==='buffering';
+  isPlaying = !!playing;
+  const dot=document.getElementById('status-dot');
+  const txt=document.getElementById('status-text');
+  if(dot) dot.className='status-dot'+(playing?' playing':'');
+  if(txt) txt.textContent=st.state||'Idle';
+  // System info
+  const net=data.network||{};
+  const sysIp=document.getElementById('sys-ip');
+  const sysTemp=document.getElementById('sys-temp');
+  const sysLoad=document.getElementById('sys-load');
+  const sysUp=document.getElementById('sys-uptime');
+  if(sysIp) sysIp.textContent=net.ip||'—';
+  if(sysTemp) {
+    sysTemp.textContent=data.cpu_temp!=null?data.cpu_temp+'°C':'—';
+    sysTemp.style.color = data.cpu_hot ? 'var(--red)' : 'var(--green)';
+  }
+  if(sysLoad) sysLoad.textContent=data.cpu_load!=null?data.cpu_load.toFixed(0)+'%':'—';
+  if(sysUp)  sysUp.textContent=data.uptime||'—';
+  // UART
+  const uartDot=document.querySelector('#uart-status .status-dot');
+  const uartTxt=document.querySelector('#uart-status span');
+  if(uartDot) uartDot.className='status-dot'+(data.uart?' playing':'');
+  if(uartTxt) uartTxt.textContent=data.uart?'Connected':'Disconnected';
+  // Network page live update
+  const nStatus=document.getElementById('net-status-val');
+  const nSsid=document.getElementById('net-ssid-val');
+  const nIp=document.getElementById('net-ip-val');
+  const nSig=document.getElementById('net-signal-val');
+  if(nStatus){ nStatus.textContent=net.connected?'Connected':'Disconnected'; nStatus.className='net-status-value'+(net.connected?' good':''); }
+  if(nSsid) nSsid.textContent=net.ssid||net.interface||'—';
+  if(nIp)   nIp.textContent=net.ip||'—';
+  if(nSig)  nSig.textContent=net.signal!=null?net.signal+' dBm':'—';
+}
+
+/* ── Init ────────────────────────────────────────── */
+(async () => {
+  // 1. Stacje
+  const sd=await api('/radio/stations');
+  state.stations=(sd.stations||[]).map(s=>({
+    id:s.id, name:s.name, url:s.url,
+    genre:s.genre||'', fav:s.favorite||false,
+    bitrate:s.bitrate||128, codec:s.codec||'MP3'
+  }));
+  buildStations();
+
+  // 2. Status systemu
+  const status=await api('/status');
+  applyStatus(status);
+
+  // 3. EQ aktywnego źródła
+  const src=status.active||'radio';
+  const eqData=await api('/eq/'+src);
+  if(eqData.gains) state.eqValues[src]=eqData.gains;
+  buildEqMini();
+  buildEqFull();
+
+  // 4. Odświeżaj status co 5s
+  setInterval(async()=>{
+    const s=await api('/status');
+    applyStatus(s);
+  }, 5000);
+})();
+</script>
+</body>
+</html>
