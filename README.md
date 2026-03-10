@@ -34,7 +34,6 @@ Internet Radio Streamer z EQ) i WWW UI (Flask).
 | Feature | Status | Notes |
 |---------|--------|-------|
 | MPD streaming | ✅ | Internet radio |
-| CamillaDSP EQ | ✅ | 7-band (bass, treble, 5x PEQ) |
 | Flask WWW UI | ✅ | Port 8000 |
 | Radio CRUD | ✅ | Add/delete/favorites |
 | VU Meter | ⚠️ | wirk but not good |
