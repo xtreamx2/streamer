@@ -93,9 +93,11 @@ def api_status():
         **sm.get_all_status(),
         'volume':    sm.get_volume(),
         'loudness':  sm.get_config('loudness', True),
+        'direct':    sm.get_config('direct', False),
+        'source_gains': sm._config.get('source_gains', {}),
         'mono':      sm.get_config('mono', False),
         'network':   net_status,
-        'uart':      uart.connected,
+        'uart':      uart.active,
         'cpu_temp':  cpu_temp,
         'cpu_load':  cpu_load,
         'cpu_hot':   bool(cpu_temp is not None and cpu_temp >= 70.0),
@@ -159,7 +161,7 @@ def api_spectrum():
     radio = _mgr().get_source('radio')
     if radio and hasattr(radio, 'get_spectrum'):
         return jsonify({'bands': radio.get_spectrum()})
-    return jsonify({'bands': [-60.0] * 32})
+    return jsonify({'bands': [-60.0] * 16})
 
 @bp.route('/meters', methods=['GET'])
 def api_meters():
@@ -221,7 +223,49 @@ def api_eq_preset(source_id, preset):
 
 @bp.route('/eq/presets', methods=['GET'])
 def api_eq_presets():
-    return jsonify(_eq().get_presets())
+    eq = _eq()
+    presets = eq.get_presets()
+    names = eq.get_preset_names()
+    return jsonify({'presets': presets, 'names': names})
+
+@bp.route('/eq/user/<preset_id>/save', methods=['POST'])
+def api_eq_user_save(preset_id):
+    """Zapisz biezace EQ jako user preset."""
+    data = request.json or {}
+    source_id = data.get('source', _mgr().active_source.SOURCE_ID if _mgr().active_source else 'radio')
+    eq = _eq()
+    gains = eq.get(source_id)
+    try:
+        saved = eq.save_user_preset(preset_id, gains)
+        return jsonify({'preset': preset_id, 'gains': saved})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/eq/user/<preset_id>/name', methods=['POST'])
+def api_eq_user_rename(preset_id):
+    """Zmien nazwe user presetu."""
+    data = request.json or {}
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'name required'}), 400
+    try:
+        new_name = _eq().set_preset_name(preset_id, name)
+        return jsonify({'preset': preset_id, 'name': new_name})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/setting/direct', methods=['POST'])
+def api_direct():
+    """Tryb Direct - bypass EQ i loudness."""
+    data = request.json or {}
+    enabled = bool(data.get('enabled', False))
+    sm = _mgr()
+    sm.set_config('direct', enabled)
+    # Zastosuj: bypass EQ i ignoruj loudness
+    src = sm.get_source('radio')
+    if src and hasattr(src, 'set_direct'):
+        src.set_direct(enabled)
+    return jsonify({'direct': enabled})
 
 
 # ── Radio / Stations ────────────────────────────────────────────────────────
@@ -310,6 +354,38 @@ def api_radio_stop():
     _uart().send_state('radio', 'stopped', '', _mgr().get_volume())
     return jsonify({'status': 'stopped'})
 
+
+@bp.route('/network/wifi', methods=['POST'])
+def api_wifi_toggle():
+    data = request.json or {}
+    enabled = bool(data.get('enabled', True))
+    nm = current_app.net_manager
+    ok = nm.set_wifi_enabled(enabled)
+    return jsonify({'wifi': enabled, 'ok': ok})
+
+@bp.route('/network/wifi', methods=['GET'])
+def api_wifi_state():
+    nm = current_app.net_manager
+    return jsonify({'wifi': nm.get_wifi_enabled()})
+
+# ── Source Gain ─────────────────────────────────────────────────────────────
+
+@bp.route('/source/<source_id>/gain', methods=['GET'])
+def api_get_gain(source_id):
+    return jsonify({'source': source_id, 'gain': _mgr().get_source_gain(source_id)})
+
+@bp.route('/source/<source_id>/gain', methods=['POST'])
+def api_set_gain(source_id):
+    data = request.json or {}
+    gain = float(data.get('gain', 0))
+    new_gain = _mgr().set_source_gain(source_id, gain)
+    return jsonify({'source': source_id, 'gain': new_gain})
+
+@bp.route('/source/gains', methods=['GET'])
+def api_get_all_gains():
+    sm = _mgr()
+    sources = ['radio','bluetooth','phono','line1','line2','spdif']
+    return jsonify({s: sm.get_source_gain(s) for s in sources})
 
 # ── Bluetooth ───────────────────────────────────────────────────────────────
 

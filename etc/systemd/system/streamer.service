@@ -1,15 +1,25 @@
 [Unit]
-Description=Tom's Streamer Flask App
-After=network.target mpd.service
-Wants=mpd.service
+Description=Tom's Streamer v0.10.3.35
+After=network-online.target bluetooth.target sound.target bluealsa.service
+Wants=network-online.target bluetooth.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/tom/streamer/app.py
-WorkingDirectory=/home/tom/streamer
-Restart=always
 User=tom
+Group=audio
+WorkingDirectory=/home/tom/streamer/api
+Environment=PYTHONUNBUFFERED=1
+Environment=ALSA_DEVICE=hw:sndrpihifiberry,0
+Environment=UART_PORT=/dev/ttyAMA0
+Environment=UART_BAUD=115200
+Environment=WEB_PORT=8000
+ExecStart=/usr/bin/python3 /home/tom/streamer/api/app.py
+Restart=always
 RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=streamer
+SupplementaryGroups=dialout audio bluetooth
 
 [Install]
 WantedBy=multi-user.target

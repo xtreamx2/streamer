@@ -41,7 +41,7 @@ class NetworkManager:
         if rc != 0:
             return result
 
-        # Szukaj najpierw WiFi, potem Ethernet
+        # Szukaj najpierw Ethernet (preferowany), potem WiFi
         wifi_line = None
         eth_line  = None
         for line in stdout.splitlines():
@@ -60,7 +60,7 @@ class NetworkManager:
             elif dev_type == 'ethernet' and eth_line is None:
                 eth_line = [device, dev_type, state] + parts[3:]
 
-        chosen = wifi_line or eth_line
+        chosen = eth_line or wifi_line   # eth0 ma priorytet nad wlan0
         if chosen:
             dev_type = chosen[1]
             result['connected']  = True
@@ -68,15 +68,19 @@ class NetworkManager:
             result['ssid']      = chosen[3] if len(chosen) > 3 and dev_type == 'wifi' else ''
             result['ip']        = self._get_ip(chosen[0])
             result['signal']    = self._get_signal(chosen[0]) if dev_type == 'wifi' else None
-        else:
-            # Fallback gdy nmcli nie parsuje — sprawdź bezpośrednio IP
-            ip = self._get_ip('eth0')
-            if not ip:
-                ip = self._get_ip('wlan0')
-            if ip:
-                result['connected']  = True
-                result['ip']         = ip
-                result['interface']  = self._get_interface()
+        # Zawsze pobierz IP bezpośrednio — nmcli może zwrócić wlan0 mimo że eth0 ma IP
+        if result['connected'] and not result['ip']:
+            result['ip'] = self._get_ip(result['interface'])
+        # Ostateczny fallback
+        if not result['ip']:
+            for iface in ['eth0', 'wlan0', 'end0']:
+                ip = self._get_ip(iface)
+                if ip:
+                    result['connected']  = True
+                    result['ip']         = ip
+                    if not result['interface']:
+                        result['interface'] = iface
+                    break
 
         return result
 
@@ -167,6 +171,17 @@ class NetworkManager:
                 if m and not m.group(1).startswith('127.'):
                     return iface
         return ''
+
+    def set_wifi_enabled(self, enabled: bool) -> bool:
+        """Włącz lub wyłącz WiFi przez nmcli."""
+        cmd = 'on' if enabled else 'off'
+        _, _, rc = _run(['nmcli', 'radio', 'wifi', cmd])
+        return rc == 0
+
+    def get_wifi_enabled(self) -> bool:
+        """Sprawdź czy WiFi jest włączone."""
+        stdout, _, rc = _run(['nmcli', 'radio', 'wifi'])
+        return rc == 0 and 'enabled' in stdout.lower()
 
     def _get_ip_legacy(self, interface: str) -> str:
         stdout, _, rc = _run(['ip', '-4', 'addr', 'show', interface])

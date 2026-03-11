@@ -1174,7 +1174,7 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <div class="section-title" style="margin:0">Equalizer</div>
-            <button class="btn" style="padding:4px 10px;font-size:11px;" onclick="showPage('settings', document.querySelectorAll('.nav-btn')[5])">Edit</button>
+            <button class="btn" id="btn-direct" style="padding:4px 10px;font-size:11px;" onclick="toggleDirect(this)">Direct</button>
           </div>
           <div class="eq-mini" id="eq-mini-display"></div>
         </div>
@@ -1320,6 +1320,10 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="net-status-item"><span class="net-status-label">IP Address</span><span class="net-status-value" id="net-ip-val" style="font-family:var(--font-mono)">—</span></div>
         <div class="net-status-item"><span class="net-status-label">Signal</span><span class="net-status-value" id="net-signal-val">—</span></div>
       </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <button class="btn" id="btn-wifi-toggle" style="flex:1;padding:10px;" onclick="toggleWifi()">WiFi OFF</button>
+        <button class="btn" style="flex:1;padding:10px;" onclick="disconnectNetwork()">Rozłącz</button>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div class="section-title" style="margin:0">Available Networks</div>
         <button class="btn" onclick="scanWifi()">Scan</button>
@@ -1347,6 +1351,18 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
               <button class="btn" onclick="setEqPreset('bass')">Bass+</button>
               <button class="btn" onclick="setEqPreset('vocal')">Vocal</button>
               <button class="btn" onclick="setEqPreset('treble')">Treble+</button>
+              <button class="btn" id="preset-user1-btn" onclick="setEqPreset('user1')" style="position:relative">
+                <span id="preset-user1-label">User 1</span>
+              </button>
+              <button class="btn" id="preset-user2-btn" onclick="setEqPreset('user2')" style="position:relative">
+                <span id="preset-user2-label">User 2</span>
+              </button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+              <button class="btn" style="font-size:11px;" onclick="saveUserPreset('user1')">Save → <span id="save-user1-label">User 1</span></button>
+              <button class="btn" style="font-size:11px;" onclick="saveUserPreset('user2')">Save → <span id="save-user2-label">User 2</span></button>
+              <button class="btn" style="font-size:11px;" onclick="renameUserPreset('user1')">Rename User 1</button>
+              <button class="btn" style="font-size:11px;" onclick="renameUserPreset('user2')">Rename User 2</button>
             </div>
           </div>
         </div>
@@ -1358,12 +1374,19 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
               <div class="toggle-sw on" id="sw-loudness" onclick="toggleSw(this,'loudness')"></div>
             </div>
             <div class="settings-row">
-              <div><div class="settings-label">Auto Gain</div><div class="settings-sub">Normalize volume between sources</div></div>
+              <div><div class="settings-label">Auto Gain</div><div class="settings-sub">Automatyczne obniżanie gainu przy CLIP</div></div>
               <div class="toggle-sw" id="sw-autogain" onclick="toggleSw(this,'autogain')"></div>
             </div>
-              <div class="toggle-sw" id="sw-mono" onclick="toggleSw(this,'mono')"></div>
+
+          </div>
+
+          <div class="card">
+            <div class="section-title">Gain wejść</div>
+            <div id="source-gains-list">
+              <!-- wypełniane przez JS -->
             </div>
           </div>
+
           <div class="card">
             <div class="section-title">System</div>
             <div class="settings-row">
@@ -1515,6 +1538,17 @@ function toggleSw(el, key) {
 }
 
 /* ── Meter ───────────────────────────────────────── */
+function initMeterMode() {
+  const activeTab = document.querySelector('.meter-tab.active');
+  if (activeTab) {
+    const mode = activeTab.getAttribute('onclick')?.match(/setMeterMode\('(\w+)/)?.[1]
+      || (activeTab.textContent.trim().toLowerCase().includes('spectrum') ? 'spectrum' : 'vu');
+    setMeterMode(mode, activeTab);
+  } else {
+    setMeterMode('vu', document.querySelector('.meter-tab'));
+  }
+}
+
 function setMeterMode(mode, btn) {
   document.querySelectorAll('.meter-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -1530,6 +1564,13 @@ function resetMeters() {
   _setVU(-60, -60, -60, -60);
 }
 
+// VU peak hold — śledzi max RMS z ostatnich 2s
+const VU_PEAK_HOLD = 2000;
+const VU_PEAK_FALL = 0.03;   // dB/ms — wolne opadanie
+let _vuPeakL = -60, _vuPeakR = -60;
+let _vuPeakLt = 0,  _vuPeakRt = 0;
+let _vuLastRmsL = -60, _vuLastRmsR = -60;
+
 function _setVU(rmsL, rmsR, peakL, peakR) {
   const toP = db => Math.max(0, Math.min(100, (db + 60) / 60 * 100));
   const tL = document.getElementById('vu-tl');
@@ -1537,10 +1578,23 @@ function _setVU(rmsL, rmsR, peakL, peakR) {
   const lp = document.getElementById('vu-lp');
   const rp = document.getElementById('vu-rp');
   if (!tL) return;
+  const now = performance.now();
+
+  // RMS bar — bezpośrednio bez smoothing (dynamiczne)
+  _vuLastRmsL = rmsL;
+  _vuLastRmsR = rmsR;
   tL.style.setProperty('--vu-mask', (100 - toP(rmsL)) + '%');
   tR.style.setProperty('--vu-mask', (100 - toP(rmsR)) + '%');
-  if (lp) lp.style.right = (100 - toP(peakL)) + '%';
-  if (rp) rp.style.right = (100 - toP(peakR)) + '%';
+
+  // Peak = max RMS (nie peak z GStreamer który jest zawsze blisko 0dB)
+  if (rmsL >= _vuPeakL) { _vuPeakL = rmsL; _vuPeakLt = now; }
+  else if (now - _vuPeakLt > VU_PEAK_HOLD) _vuPeakL -= VU_PEAK_FALL * (now - _vuPeakLt - VU_PEAK_HOLD) * 0.01;
+  if (rmsR >= _vuPeakR) { _vuPeakR = rmsR; _vuPeakRt = now; }
+  else if (now - _vuPeakRt > VU_PEAK_HOLD) _vuPeakR -= VU_PEAK_FALL * (now - _vuPeakRt - VU_PEAK_HOLD) * 0.01;
+  _vuPeakL = Math.max(-61, Math.min(0, _vuPeakL));
+  _vuPeakR = Math.max(-61, Math.min(0, _vuPeakR));
+  if (lp) lp.style.right = (100 - toP(_vuPeakL)) + '%';
+  if (rp) rp.style.right = (100 - toP(_vuPeakR)) + '%';
 }
 
 async function _vuPoll() {
@@ -1551,13 +1605,14 @@ async function _vuPoll() {
 }
 
 /* ── Spectrum analyser (pseudo-FFT z RMS) ── */
-let _specBands = new Float32Array(32).fill(-60);
-let _specPeaks = new Float32Array(32).fill(-60);
-let _specPeakTtl = new Uint8Array(32).fill(0);
+let _specBands = new Float32Array(16).fill(-60);
+let _specPeaks = new Float32Array(16).fill(-60);
+let _specPeakTtl = new Uint8Array(16).fill(0);
 let _specRaf = null;
+let _meterBusy = false;  // guard — nie wysyłaj gdy poprzedni request w locie
 let _specTimer = null;
 let _specLastLevel = {rms_l:-60, rms_r:-60, peak_l:-60, peak_r:-60};
-let _specLastBands = new Array(32).fill(-60);
+let _specLastBands = new Array(16).fill(-60);
 
 function _specDraw() {
   const canvas = document.getElementById('spectrum-canvas');
@@ -1566,11 +1621,11 @@ function _specDraw() {
   const W = canvas.offsetWidth || 300, H = 120;
   if (canvas.width !== W || canvas.height !== H) { canvas.width=W; canvas.height=H; }
   const ctx = canvas.getContext('2d');
-  const n = _specBands.length;
+  const n = _specBands.length;  // 16
   const gap = 2, bw = (W - gap*(n-1)) / n;
 
   // Użyj prawdziwych danych FFT z GStreamer spectrum lub fallback RMS
-  const hasFft = _specLastBands && _specLastBands[0] > -59;
+  const hasFft = _specLastBands && _specLastBands.some(v => v > -58);
   const avgRms = (_specLastLevel.rms_l + _specLastLevel.rms_r) / 2;
   for (let i = 0; i < n; i++) {
     let target;
@@ -1622,16 +1677,24 @@ function _specDraw() {
 function startSpectrum() {
   if (_vuTimer) return;
   // Jeden request co 100ms — level + spectrum razem
-  _vuTimer = setInterval(async () => {
-    try {
-      const d = await api('/meters');
-      if (d) {
-        _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
-        _specLastLevel = d;
-        if (d.bands) _specLastBands = d.bands;
-      }
-    } catch(e) {}
-  }, 100);
+  _vuTimer = setInterval(() => {
+    if (_meterBusy) return;
+    _meterBusy = true;
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => { ctrl.abort(); _meterBusy = false; }, 150);
+    fetch('/api/meters', {signal: ctrl.signal})
+      .then(r => r.json())
+      .then(d => {
+        clearTimeout(tid);
+        _meterBusy = false;
+        if (d) {
+          _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
+          _specLastLevel = d;
+          if (d.bands) _specLastBands = d.bands;
+        }
+      })
+      .catch(() => { clearTimeout(tid); _meterBusy = false; });
+  }, 120);
   if (!_specRaf) _specDraw();
 }
 function stopSpectrum() {
@@ -1702,7 +1765,8 @@ function resetEq(){
 }
 const PRESETS={
   flat:[0,0,0,0,0,0,0,0,0,0], bass:[6,5,4,2,0,0,0,0,0,0],
-  vocal:[-1,-1,0,2,4,4,3,1,0,-1], treble:[0,0,0,0,0,1,2,4,5,6]
+  vocal:[-1,-1,0,2,4,4,3,1,0,-1], treble:[0,0,0,0,0,1,2,4,5,6],
+  user1:[0,0,0,0,0,0,0,0,0,0], user2:[0,0,0,0,0,0,0,0,0,0]
 };
 function setEqPreset(p){
   state.eqValues[state.eqSource]=[...PRESETS[p]];
@@ -1902,12 +1966,18 @@ function applyStatus(data) {
     if(chip) chip.classList.toggle('on', data.loudness);
     if(sw)   sw.classList.toggle('on', data.loudness);
   }
+  if (data.direct != null) applyDirectState(data.direct);
   // Active source buttons
   if (data.active) {
     state.source=data.active;
     document.querySelectorAll('.source-btn').forEach(b=>{
       b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'"+data.active+"'"));
     });
+    // Tytuł zakładki: "Streamer · NazwaŹródła"
+    const srcNames = {radio: (data.status&&data.status.station)||'Radio',
+                      bluetooth:'Bluetooth', phono:'Phono',
+                      line1:'Line 1', line2:'Line 2', spdif:'S/PDIF'};
+    document.title = 'Streamer · ' + (srcNames[data.active] || data.active);
   }
   // Now playing / metadata
   const st=data.status||{};
@@ -1922,6 +1992,8 @@ function applyStatus(data) {
     const stream=st.stream||{};
     if (stream.bitrate_kbps) subParts.push(stream.bitrate_kbps+' kbps');
     if (stream.codec) subParts.push(stream.codec);
+    if (stream.sample_rate) subParts.push((stream.sample_rate/1000).toFixed(1)+' kHz');
+    if (stream.channels) subParts.push(stream.channels === 2 ? 'Stereo' : stream.channels+'ch');
     if (!subParts.length) subParts.push((st.station||data.active||''),(st.state||''));
     if (npSub) npSub.textContent=subParts.filter(Boolean).join('  ·  ');
 
@@ -1991,6 +2063,118 @@ function applyStatus(data) {
     applyStatus(s);
   }, 5000);
 })();
+setTimeout(() => {
+  initMeterMode();
+  loadUserPresetNames();
+  loadSourceGains();
+}, 500);
+
+// ── Direct mode ──────────────────────────────────────────
+function toggleDirect(btn) {
+  const active = btn.classList.toggle('active');
+  api('/setting/direct', 'POST', {enabled: active});
+}
+function applyDirectState(direct) {
+  const btn = document.getElementById('btn-direct');
+  if (btn) btn.classList.toggle('active', !!direct);
+}
+
+// ── User presets ──────────────────────────────────────────
+function saveUserPreset(presetId) {
+  const label = document.getElementById('preset-' + presetId + '-label')?.textContent || presetId;
+  if (!confirm('Zapisać bieżące nastawy EQ jako "' + label + '"?')) return;
+  api('/eq/user/' + presetId + '/save', 'POST', {source: state.eqSource || state.source}).then(d => {
+    if (!d || d.error) { alert(d ? d.error : 'Błąd serwera'); return; }
+    if (d.gains) PRESETS[presetId] = d.gains;
+    alert('Zapisano: ' + label);
+  });
+}
+
+function renameUserPreset(presetId) {
+  const current = document.getElementById('preset-' + presetId + '-label')?.textContent || presetId;
+  const newName = prompt('Nowa nazwa:', current);
+  if (!newName || !newName.trim()) return;
+  api('/eq/user/' + presetId + '/name', 'POST', {name: newName.trim()}).then(d => {
+    if (!d || d.error) { alert(d ? d.error : 'Błąd'); return; }
+    ['preset-' + presetId + '-label', 'save-' + presetId + '-label'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = d.name;
+    });
+  });
+}
+function loadUserPresetNames() {
+  api('/eq/presets').then(d => {
+    if (!d) return;
+    // Wczytaj gains user presetów do lokalnego PRESETS
+    if (d.presets) {
+      ['user1','user2'].forEach(id => {
+        if (d.presets[id]) PRESETS[id] = d.presets[id];
+      });
+    }
+    // Zaktualizuj etykiety
+    if (d.names) {
+      Object.entries(d.names).forEach(([id, name]) => {
+        ['preset-' + id + '-label', 'save-' + id + '-label'].forEach(eid => {
+          const el = document.getElementById(eid);
+          if (el) el.textContent = name;
+        });
+      });
+    }
+  });
+}
+
+function toggleWifi() {
+  const btn = document.getElementById('btn-wifi-toggle');
+  const currentlyOff = btn.textContent.trim() === 'WiFi ON';
+  const enable = currentlyOff;
+  api('/network/wifi', 'POST', {enabled: enable}).then(d => {
+    btn.textContent = d.wifi ? 'WiFi OFF' : 'WiFi ON';
+  });
+}
+function disconnectNetwork() {
+  if (!confirm('Rozłączyć od sieci WiFi?')) return;
+  fetch('/api/network/disconnect', {method:'POST'}).catch(()=>{});
+}
+function updateWifiBtn() {
+  api('/network/wifi').then(d => {
+    const btn = document.getElementById('btn-wifi-toggle');
+    if (btn) btn.textContent = d.wifi ? 'WiFi OFF' : 'WiFi ON';
+  }).catch(()=>{});
+}
+
+// ── Source Gains ─────────────────────────────────────────
+const SOURCE_NAMES = {radio:'Radio',bluetooth:'Bluetooth',phono:'Phono',line1:'Line 1',line2:'Line 2',spdif:'S/PDIF'};
+
+function buildGainsList(gains) {
+  const list = document.getElementById('source-gains-list');
+  if (!list) return;
+  list.innerHTML = Object.entries(SOURCE_NAMES).map(([id, name]) => {
+    const val = (gains && gains[id] !== undefined) ? gains[id] : 0;
+    return `<div class="settings-row" style="flex-direction:column;align-items:stretch;gap:4px;">
+      <div style="display:flex;justify-content:space-between;">
+        <div class="settings-label">${name}</div>
+        <span id="gain-val-${id}" style="font-family:var(--font-mono);font-size:12px;">${val > 0 ? '+' : ''}${val.toFixed(1)} dB</span>
+      </div>
+      <input type="range" min="-10" max="6" step="0.5" value="${val}"
+        style="width:100%;accent-color:var(--blue);"
+        oninput="updateGainLabel('${id}',this.value)"
+        onchange="setSourceGain('${id}',this.value)">
+    </div>`;
+  }).join('');
+}
+
+function updateGainLabel(id, val) {
+  const el = document.getElementById('gain-val-' + id);
+  if (el) el.textContent = (val > 0 ? '+' : '') + parseFloat(val).toFixed(1) + ' dB';
+}
+
+function setSourceGain(id, val) {
+  api('/source/' + id + '/gain', 'POST', {gain: parseFloat(val)});
+}
+
+function loadSourceGains() {
+  api('/source/gains').then(d => { if (d) buildGainsList(d); });
+}
 </script>
 </body>
 </html>

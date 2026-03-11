@@ -1,3 +1,4 @@
+import re
 #!/usr/bin/env python3
 """
 Źródło: Radio internetowe (GStreamer souphttpsrc + decodebin + EQ + alsasink).
@@ -49,7 +50,10 @@ class RadioSource(AudioSource):
         self._play_pending       = None   # URL do zagrania po zatrzymaniu
         self._level_rms          = (0.0, 0.0)   # (L, R) RMS dB, aktualizowane przez GStreamer
         self._level_peak         = (0.0, 0.0)
-        self._spectrum_bands     = [-60.0] * 32   # 32 pasma FFT w dB
+        self._spectrum_bands     = [-60.0] * 16   # 16 pasm FFT w dB
+        self._direct             = False            # bypass EQ+loudness
+        self._pregain            = 0.0              # gain per source w dB
+        self._on_clip            = None             # callback przy CLIP
 
         # GLib MainLoop w osobnym wątku — wymagany przez GStreamer bus callbacks
         self._loop = GLib.MainLoop()
@@ -142,24 +146,25 @@ class RadioSource(AudioSource):
         decode   = Gst.ElementFactory.make('decodebin',         'decode')
         convert  = Gst.ElementFactory.make('audioconvert',      'convert')
         resample = Gst.ElementFactory.make('audioresample',     'resample')
-        eq       = Gst.ElementFactory.make('equalizer-10bands', 'eq')
-        vol      = Gst.ElementFactory.make('volume',            'volume')
         level    = Gst.ElementFactory.make('level',             'level')
         spectrum = Gst.ElementFactory.make('spectrum',          'spectrum')
+        eq       = Gst.ElementFactory.make('equalizer-10bands', 'eq')
+        vol      = Gst.ElementFactory.make('volume',            'volume')
         sink     = Gst.ElementFactory.make('alsasink',          'sink')
 
-        if not all([src, decode, convert, resample, eq, vol, level, sink]):
+        if not all([src, decode, convert, resample, level, eq, vol, sink]):
             raise RuntimeError("GStreamer: brakujące elementy pipeline")
 
-        level.set_property('interval',     50_000_000)
-        level.set_property('peak-ttl',    300_000_000)
+        # level: przed EQ/vol — mierzy surowy sygnał wejściowy
+        level.set_property('interval',      40_000_000)   # 40ms
+        level.set_property('peak-ttl',     100_000_000)   # 100ms peak hold (krótszy = szybsze opadanie)
         level.set_property('post-messages', True)
 
         if spectrum:
-            spectrum.set_property('bands',         32)
-            spectrum.set_property('interval',  50_000_000)
-            spectrum.set_property('threshold',       -60)
-            spectrum.set_property('post-messages',  True)
+            spectrum.set_property('bands',            16)
+            spectrum.set_property('interval',   40_000_000)
+            spectrum.set_property('threshold',        -60)
+            spectrum.set_property('post-messages',   True)
             spectrum.set_property('message-magnitude', True)
             spectrum.set_property('message-phase',    False)
 
@@ -172,22 +177,23 @@ class RadioSource(AudioSource):
         sink.set_property('device', self.alsa_device)
         resample.set_property('quality', 10)
 
-        elements = [src, decode, convert, resample, eq, vol, level, sink]
+        # Pipeline: src → decode → convert → resample → level → [spectrum →] eq → vol → sink
+        elements = [src, decode, convert, resample, level, eq, vol, sink]
         if spectrum:
-            elements.insert(-1, spectrum)  # ..level → spectrum → sink
+            elements.insert(elements.index(eq), spectrum)
         for el in elements:
             pipe.add(el)
 
         src.link(decode)
         convert.link(resample)
-        resample.link(eq)
-        eq.link(vol)
-        vol.link(level)
+        resample.link(level)
         if spectrum:
             level.link(spectrum)
-            spectrum.link(sink)
+            spectrum.link(eq)
         else:
-            level.link(sink)
+            level.link(eq)
+        eq.link(vol)
+        vol.link(sink)
 
         decode.connect('pad-added', self._on_pad_added, convert)
 
@@ -197,7 +203,7 @@ class RadioSource(AudioSource):
         self._apply_volume()
         self._level_rms     = (0.0, 0.0)
         self._level_peak    = (0.0, 0.0)
-        self._spectrum_bands = [-60.0] * 32
+        self._spectrum_bands = [-60.0] * 16
 
         bus = pipe.get_bus()
         bus.add_signal_watch()
@@ -276,23 +282,40 @@ class RadioSource(AudioSource):
             if ok_c and v_c and v_c.strip():
                 self._stream_codec = v_c.strip()
 
-            try:
-                ok_br, v_br = tags.get_uint('bitrate')
-            except Exception:
-                ok_br, v_br = False, None
-            if ok_br and v_br:
-                self._stream_bitrate_kbps = max(1, int(v_br // 1000))
+            # Próbuj różnych tagów bitrate (FLAC używa nominal-bitrate lub maximum-bitrate)
+            bitrate_raw = None
+            for tag_name in ('bitrate', 'nominal-bitrate', 'maximum-bitrate', 'minimum-bitrate'):
+                try:
+                    ok_br, v_br = tags.get_uint(tag_name)
+                    if ok_br and v_br and v_br > 1000:
+                        bitrate_raw = v_br
+                        break
+                except Exception:
+                    pass
+            if bitrate_raw:
+                self._stream_bitrate_kbps = max(1, int(bitrate_raw // 1000))
 
         elif t == Gst.MessageType.ELEMENT:
             s = msg.get_structure()
             if s and s.get_name() == 'spectrum':
                 try:
-                    mag = s.get_value('magnitude')
-                    self._spectrum_bands = [max(-60.0, min(0.0, float(mag[i])))
-                                            for i in range(min(32, len(mag)))]
+                    raw = s.to_string()
+                    import re as _re
+                    m = _re.search(r'magnitude=[(]float[)][{]([^}]+)[}]', raw)
+                    if m:
+                        vals = [float(x.strip()) for x in m.group(1).split(',') if x.strip()]
+                        self._spectrum_bands = [max(-60.0, min(0.0, v)) for v in vals[:16]]
                 except Exception:
                     pass
             elif s and s.get_name() == 'level':
+                # Sprawdz CLIP (peak >= 0dBFS)
+                try:
+                    peak = s.get_value('peak')
+                    if peak and any(float(p) >= -0.1 for p in peak):
+                        if self._on_clip:
+                            self._on_clip(self.SOURCE_ID)
+                except Exception:
+                    pass
                 try:
                     rms  = s.get_value('rms')
                     peak = s.get_value('peak')
@@ -356,10 +379,36 @@ class RadioSource(AudioSource):
                 p.set_state(Gst.State.NULL)
                 p.get_state(timeout=Gst.SECOND * 2)  # czekaj max 2s
 
+    def set_pregain(self, gain_db: float):
+        """Ustaw pre-gain (wzmocnienie/tlumienie przed EQ) w dB."""
+        self._pregain = max(-10.0, min(6.0, float(gain_db)))
+        if self._vol_el:
+            # Skaluj volume przez pregain: vol_linear * 10^(gain_db/20)
+            import math
+            factor = 10 ** (self._pregain / 20.0)
+            base_vol = self._volume / 100.0
+            self._vol_el.set_property('volume', min(1.0, base_vol * factor))
+
+    def _apply_volume(self):
+        import math
+        if self._vol_el:
+            factor = 10 ** (self._pregain / 20.0)
+            self._vol_el.set_property('volume', min(1.0, (self._volume / 100.0) * factor))
+
+    def set_direct(self, enabled: bool):
+        """Tryb Direct: bypass EQ (flat) i ignoruj loudness."""
+        self._direct = enabled
+        self._apply_eq()
+
     def _apply_eq(self):
         if self._eq_el:
-            for i, gain in enumerate(self._eq_gains):
-                self._eq_el.set_property(f'band{i}', float(gain))
+            if self._direct:
+                # Bypass — wszystkie pasma na 0
+                for i in range(10):
+                    self._eq_el.set_property(f'band{i}', 0.0)
+            else:
+                for i, gain in enumerate(self._eq_gains):
+                    self._eq_el.set_property(f'band{i}', float(gain))
 
     def _apply_volume(self):
         if self._vol_el:

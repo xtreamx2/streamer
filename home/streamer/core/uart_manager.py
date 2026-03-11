@@ -43,6 +43,7 @@ class UARTManager:
         self._running  = False
         self._lock     = threading.Lock()
         self._connected = False
+        self._last_rx   = 0.0   # timestamp ostatniego odbioru danych
 
     # ── Lifecycle ──────────────────────────────────────────────
 
@@ -61,6 +62,12 @@ class UARTManager:
     @property
     def connected(self) -> bool:
         return self._connected
+
+    @property
+    def active(self) -> bool:
+        """True tylko gdy port otwarty ORAZ RP2040 przysłał dane w ostatnich 30s."""
+        import time
+        return self._connected and (time.monotonic() - self._last_rx) < 30
 
     # ── Send ───────────────────────────────────────────────────
 
@@ -155,6 +162,7 @@ class UARTManager:
         try:
             msg = json.loads(line)
             log.debug(f"UART ← {msg}")
+            self._last_rx = __import__('time').monotonic()
             if self._on_event:
                 self._on_event(msg)
         except json.JSONDecodeError:

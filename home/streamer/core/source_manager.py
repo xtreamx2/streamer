@@ -135,7 +135,7 @@ class SourceManager:
             new_source.set_eq_gains(eq)
             # Zapisz ostatnie źródło
             self._config['last_source'] = source_id
-            self._save_config()
+            self._save_config(debounce=True)
             log.info(f"Active: {source_id}")
         else:
             log.error(f"Nie można aktywować: {source_id}")
@@ -166,11 +166,43 @@ class SourceManager:
         }
 
     def set_volume(self, vol: int):
-        """Ustaw głośność aktywnego źródła i zapisz w config."""
+        """Ustaw głośnosc aktywnego zrodla i zapisz w config."""
         self._config['volume'] = vol
         self._save_config()
         if self._active:
             self._active.set_volume(vol)
+
+    # ── Gain per source ──────────────────────────────────────
+
+    def get_source_gain(self, source_id: str) -> float:
+        """Pobierz gain dla danego zrodla w dB (-10..+6)."""
+        gains = self._config.get('source_gains', {})
+        return float(gains.get(source_id, 0.0))
+
+    def set_source_gain(self, source_id: str, gain_db: float) -> float:
+        """Ustaw gain dla danego zrodla (-10..+6 dB) i zastosuj jezeli aktywne."""
+        gain_db = max(-10.0, min(6.0, float(gain_db)))
+        if 'source_gains' not in self._config:
+            self._config['source_gains'] = {}
+        self._config['source_gains'][source_id] = gain_db
+        self._save_config(debounce=True)
+        if self._active and self._active.SOURCE_ID == source_id:
+            self._apply_source_gain(self._active, gain_db)
+        return gain_db
+
+    def _apply_source_gain(self, source, gain_db: float):
+        """Zastosuj gain jako pre-gain (modyfikacja volume elementu GStreamer)."""
+        if hasattr(source, 'set_pregain'):
+            source.set_pregain(gain_db)
+
+    def autogain_clip(self, source_id: str) -> float:
+        """Wywolane przy CLIP — obniz gain o 1dB i zapisz. Zwraca nowy gain."""
+        current = self.get_source_gain(source_id)
+        if current > -10.0:
+            new_gain = max(-10.0, current - 1.0)
+            log.info(f"AutoGain CLIP: {source_id} {current:.1f} → {new_gain:.1f} dB")
+            return self.set_source_gain(source_id, new_gain)
+        return current
 
     def set_eq(self, source_id: str, gains: list):
         """Ustaw EQ dla danego źródła i zapisz."""
@@ -179,7 +211,7 @@ class SourceManager:
         if 'eq' not in self._config:
             self._config['eq'] = {}
         self._config['eq'][source_id] = gains
-        self._save_config()
+        self._save_config(debounce=True)
         src = self._sources.get(source_id)
         if src:
             src.set_eq_gains(gains)
@@ -212,7 +244,23 @@ class SourceManager:
         except Exception:
             return {}
 
-    def _save_config(self):
+    def _save_config(self, debounce: bool = False):
+        """Zapisz config na dysk. debounce=True: max raz na 5s."""
+        import time
+        now = time.monotonic()
+        if debounce and hasattr(self, '_last_save') and (now - self._last_save) < 5.0:
+            self._dirty = True
+            return
+        self._dirty = False
+        self._last_save = now
+        self._do_save()
+
+    def _flush_config(self):
+        if getattr(self, '_dirty', False):
+            self._dirty = False
+            self._do_save()
+
+    def _do_save(self):
         try:
             # Odczytaj aktualny config żeby nie nadpisać innych kluczy
             try:

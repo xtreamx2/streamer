@@ -5,22 +5,22 @@
   "uart_baud": 115200,
   "last_source": "radio",
   "last_station_id": "trancepulse",
-  "volume": 75,
+  "volume": 20,
   "balance": 0,
   "loudness": true,
   "mono": false,
   "eq": {
     "radio": [
-      0,
+      6,
+      4,
       2,
+      0,
+      0,
+      -5,
+      0,
       3,
-      2,
-      0,
-      -1,
-      0,
-      1,
-      2,
-      1
+      5,
+      6
     ],
     "bluetooth": [
       0,
@@ -82,5 +82,27 @@
       0,
       0
     ]
+  },
+  "autogain": true,
+  "direct": false,
+  "source_gains": {
+    "radio": 3.0
+  },
+  "user_presets": {
+    "user1": [
+      6,
+      4,
+      2,
+      0,
+      0,
+      -5,
+      0,
+      3,
+      5,
+      6
+    ]
+  },
+  "preset_names": {
+    "user1": "Loudness"
   }
 }
