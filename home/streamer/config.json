@@ -5,7 +5,7 @@
   "uart_baud": 115200,
   "last_source": "radio",
   "last_station_id": "trancepulse",
-  "volume": 20,
+  "volume": 40,
   "balance": 0,
   "loudness": true,
   "mono": false,

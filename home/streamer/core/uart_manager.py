@@ -63,6 +63,16 @@ class UARTManager:
     def connected(self) -> bool:
         return self._connected
 
+    def _ping_loop(self):
+        """Wysyłaj ping co 8s dopóki połączony."""
+        if not self._running:
+            return
+        self.send_ping()
+        import threading, time
+        t = threading.Timer(8.0, self._ping_loop)
+        t.daemon = True
+        t.start()
+
     @property
     def active(self) -> bool:
         """True tylko gdy port otwarty ORAZ RP2040 przysłał dane w ostatnich 30s."""
@@ -70,6 +80,10 @@ class UARTManager:
         return self._connected and (time.monotonic() - self._last_rx) < 30
 
     # ── Send ───────────────────────────────────────────────────
+
+    def send_ping(self):
+        """Wyślij ping do RP2040. Oczekiwana odpowiedź: {"evt":"pong"}"""
+        self._send({"cmd": "ping"})
 
     def send_state(self, source: str, state: str, title: str = '',
                    volume: int = 0, station: str = ''):
@@ -122,6 +136,9 @@ class UARTManager:
                 )
                 self._connected = True
                 log.info(f"UART connected: {self._port}")
+                # Wyślij ping od razu po połączeniu
+                import threading
+                threading.Timer(1.0, self._ping_loop).start()
                 self._read_loop()
             except serial.SerialException as e:
                 self._connected = False
@@ -163,6 +180,8 @@ class UARTManager:
             msg = json.loads(line)
             log.debug(f"UART ← {msg}")
             self._last_rx = __import__('time').monotonic()
+            if msg.get('evt') == 'pong':
+                return  # ping/pong — nie przekazuj wyżej
             if self._on_event:
                 self._on_event(msg)
         except json.JSONDecodeError:

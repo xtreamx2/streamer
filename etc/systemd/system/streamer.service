@@ -1,5 +1,5 @@
 [Unit]
-Description=Tom's Streamer v0.10.3.35
+Description=PylonisAmp v0.10.4.16
 After=network-online.target bluetooth.target sound.target bluealsa.service
 Wants=network-online.target bluetooth.target
 

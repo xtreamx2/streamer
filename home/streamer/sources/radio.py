@@ -24,6 +24,28 @@ EQ_BAND_NAMES = ['60Hz','170Hz','310Hz','600Hz','1kHz','3kHz','6kHz','12kHz','14
 FLAT_PRESET   = [0.0] * 10
 
 
+def _log_bands(gst_vals: list, n_out: int = 32,
+               f_min: float = 20.0, f_max: float = 20000.0,
+               sample_rate: int = 44100) -> list:
+    """Mapuj liniowe pasma GStreamer na n_out pasm logarytmicznych 20-20000 Hz."""
+    import math
+    n_in = len(gst_vals)
+    hz_per_band = (sample_rate / 2.0) / n_in
+    result = []
+    for i in range(n_out):
+        f_lo = f_min * (f_max / f_min) ** (i / n_out)
+        f_hi = f_min * (f_max / f_min) ** ((i + 1) / n_out)
+        idx_lo = max(0, int(f_lo / hz_per_band))
+        idx_hi = min(n_in - 1, int(f_hi / hz_per_band))
+        if idx_lo == idx_hi:
+            val = gst_vals[idx_lo]
+        else:
+            # Maksimum z zakresu (bardziej czytelne niż średnia)
+            val = max(gst_vals[idx_lo:idx_hi + 1])
+        result.append(max(-60.0, min(0.0, val)))
+    return result
+
+
 class RadioSource(AudioSource):
     SOURCE_ID   = 'radio'
     SOURCE_NAME = 'Internet Radio'
@@ -39,6 +61,7 @@ class RadioSource(AudioSource):
         self._stream_bitrate_kbps = None
         self._stream_rate        = None
         self._stream_channels    = None
+        self._stream_bit_depth   = None
         self._decoder_caps       = ''
         self._volume             = 75
         self._eq_gains           = FLAT_PRESET[:]
@@ -50,7 +73,7 @@ class RadioSource(AudioSource):
         self._play_pending       = None   # URL do zagrania po zatrzymaniu
         self._level_rms          = (0.0, 0.0)   # (L, R) RMS dB, aktualizowane przez GStreamer
         self._level_peak         = (0.0, 0.0)
-        self._spectrum_bands     = [-60.0] * 16   # 16 pasm FFT w dB
+        self._spectrum_bands     = [-60.0] * 32   # 32 pasma LOG 20-20000 Hz
         self._direct             = False            # bypass EQ+loudness
         self._pregain            = 0.0              # gain per source w dB
         self._on_clip            = None             # callback przy CLIP
@@ -87,6 +110,7 @@ class RadioSource(AudioSource):
             'stream': {
                 'codec':         self._stream_codec,
                 'bitrate_kbps':  self._stream_bitrate_kbps,
+                'bit_depth':     self._stream_bit_depth,
                 'sample_rate':   self._stream_rate,
                 'channels':      self._stream_channels,
                 'decoder_caps':  self._decoder_caps,
@@ -157,11 +181,11 @@ class RadioSource(AudioSource):
 
         # level: przed EQ/vol — mierzy surowy sygnał wejściowy
         level.set_property('interval',      40_000_000)   # 40ms
-        level.set_property('peak-ttl',     100_000_000)   # 100ms peak hold (krótszy = szybsze opadanie)
+        level.set_property('peak-ttl',               0)   # brak hold w GStreamer — JS robi własny peak hold
         level.set_property('post-messages', True)
 
         if spectrum:
-            spectrum.set_property('bands',            16)
+            spectrum.set_property('bands',           512)  # wysoka rozdzielczość → mapowanie log w Python
             spectrum.set_property('interval',   40_000_000)
             spectrum.set_property('threshold',        -60)
             spectrum.set_property('post-messages',   True)
@@ -203,7 +227,7 @@ class RadioSource(AudioSource):
         self._apply_volume()
         self._level_rms     = (0.0, 0.0)
         self._level_peak    = (0.0, 0.0)
-        self._spectrum_bands = [-60.0] * 16
+        self._spectrum_bands = [-60.0] * 32
 
         bus = pipe.get_bus()
         bus.add_signal_watch()
@@ -222,6 +246,12 @@ class RadioSource(AudioSource):
                         self._stream_rate = int(s.get_value('rate'))
                     if s.has_field('channels'):
                         self._stream_channels = int(s.get_value('channels'))
+                    # bit depth z formatu np. audio/x-raw,format=S16LE
+                    if s.has_field('format'):
+                        fmt = str(s.get_value('format'))
+                        m = __import__('re').search(r'S(\d+)', fmt)
+                        if m:
+                            self._stream_bit_depth = int(m.group(1))
                     self._decoder_caps = name
                 except Exception:
                     pass
@@ -304,7 +334,10 @@ class RadioSource(AudioSource):
                     m = _re.search(r'magnitude=[(]float[)][{]([^}]+)[}]', raw)
                     if m:
                         vals = [float(x.strip()) for x in m.group(1).split(',') if x.strip()]
-                        self._spectrum_bands = [max(-60.0, min(0.0, v)) for v in vals[:16]]
+                        if len(vals) >= 64:
+                            self._spectrum_bands = _log_bands(vals)
+                        else:
+                            self._spectrum_bands = [max(-60.0, min(0.0, v)) for v in vals[:32]]
                 except Exception:
                     pass
             elif s and s.get_name() == 'level':

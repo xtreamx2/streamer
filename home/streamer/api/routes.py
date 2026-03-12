@@ -93,11 +93,13 @@ def api_status():
         **sm.get_all_status(),
         'volume':    sm.get_volume(),
         'loudness':  sm.get_config('loudness', True),
+        'autogain':  sm.get_config('autogain', True),
+        'meter_mode': sm.get_config('meter_mode', 'vu'),
         'direct':    sm.get_config('direct', False),
         'source_gains': sm._config.get('source_gains', {}),
         'mono':      sm.get_config('mono', False),
         'network':   net_status,
-        'uart':      uart.active,
+        'uart':      uart.connected,  # port otwarty (ping/pong gdy RP2040 ma firmware)
         'cpu_temp':  cpu_temp,
         'cpu_load':  cpu_load,
         'cpu_hot':   bool(cpu_temp is not None and cpu_temp >= 70.0),
@@ -166,14 +168,14 @@ def api_spectrum():
 @bp.route('/meters', methods=['GET'])
 def api_meters():
     """Level + Spectrum w jednym requeście."""
-    radio = _mgr().get_source('radio')
-    level = {'rms_l': -60, 'rms_r': -60, 'peak_l': -60, 'peak_r': -60}
+    source = _mgr().active_source  # zawsze z aktywnego źródła
+    level = {'rms_l': -60.0, 'rms_r': -60.0, 'peak_l': -60.0, 'peak_r': -60.0}
     bands = [-60.0] * 32
-    if radio:
-        if hasattr(radio, 'get_level'):
-            level = radio.get_level()
-        if hasattr(radio, 'get_spectrum'):
-            bands = radio.get_spectrum()
+    if source:
+        if hasattr(source, 'get_level'):
+            level = source.get_level()
+        if hasattr(source, 'get_spectrum'):
+            bands = source.get_spectrum()
     return jsonify({**level, 'bands': bands})
 
 
@@ -184,7 +186,7 @@ def api_setting():
     data  = request.get_json(force=True) or {}
     key   = data.get('key')
     value = data.get('value')
-    if key in ('loudness', 'mono', 'autogain'):
+    if key in ('loudness', 'mono', 'autogain', 'meter_mode'):
         _mgr().set_config(key, bool(value))
         return jsonify({'key': key, 'value': value})
     return jsonify({'error': 'Unknown setting'}), 400
@@ -481,6 +483,15 @@ def api_reboot():
         subprocess.run(['sudo', 'reboot'])
     threading.Thread(target=_do, daemon=True).start()
     return jsonify({'status': 'rebooting'})
+
+@bp.route('/system/shutdown', methods=['POST'])
+def api_shutdown():
+    import threading
+    def _do():
+        import time; time.sleep(1)
+        subprocess.run(['sudo', 'poweroff'])
+    threading.Thread(target=_do, daemon=True).start()
+    return jsonify({'status': 'shutting_down'})
 
 @bp.route('/system/info', methods=['GET'])
 def api_sysinfo():

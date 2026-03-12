@@ -2,8 +2,9 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
+<meta name="version" content="v0.10.4.16">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Streamer</title>
+<title>PylonisAmp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
@@ -459,11 +460,12 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
   position: relative;
   /* gradient leżący zawsze na całej szerokości */
   background: linear-gradient(to right,
-    #1565c0 0%,
-    #1e88e5 50%,
-    #e6c300 70%,
-    #ff6600 85%,
-    #e53935 100%
+    #1565c0  0%,   /* -60 dBFS */
+    #1e88e5 68%,   /* -22 dBFS */
+    #f9c700 72%,   /* -17 dBFS ≈ 0 VU */
+    #ff8800 88%,   /*  -7 dBFS */
+    #e53935 94%,   /*  -4 dBFS */
+    #ff1744 100%   /*   0 dBFS clip */
   );
 }
 /* ciemna maska od prawej — zasłania gradient poza poziomem */
@@ -1050,15 +1052,26 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
               <span class="src-label">Phono</span>
               <span class="src-sub">RIAA</span>
             </button>
-            <button class="source-btn" onclick="setSource(this,'line')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-              <span class="src-label">Line</span>
-              <span class="src-sub">Analog</span>
-            </button>
+            
             <button class="source-btn disabled" onclick="setSource(this,'spdif')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12h20M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
               <span class="src-label">S/PDIF</span>
               <span class="src-sub">Digital</span>
+            </button>
+            <button class="source-btn disabled" style="cursor:not-allowed;" title="Niedostępne — brak PCM1808">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+              <span class="src-label">Line In 1</span>
+              <span class="src-sub">wkrótce</span>
+            </button>
+            <button class="source-btn disabled" style="cursor:not-allowed;" title="Niedostępne — brak PCM1808">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+              <span class="src-label">Line In 2</span>
+              <span class="src-sub">wkrótce</span>
+            </button>
+            <button class="source-btn disabled" style="cursor:not-allowed;" title="Niedostępne">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="9" width="13" height="6" rx="1"/><polyline points="15 12 22 8 22 16 15 12"/></svg>
+              <span class="src-label">USB</span>
+              <span class="src-sub">wkrótce</span>
             </button>
           </div>
         </div>
@@ -1146,7 +1159,7 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
                 </div>
                 <div class="vu-peak" id="vu-lp" style="right:100%"></div>
               </div>
-              <div class="vu-scale"><span>-40</span><span>-20</span><span>-10</span><span>-6</span><span>-3</span><span>0</span></div>
+              <div class="vu-scale"><span>-60</span><span>-18</span><span>-12</span><span>-6</span><span>-3</span><span>0</span></div>
             </div>
             <div class="vu-channel">
               <div class="vu-label">R</div>
@@ -1156,7 +1169,7 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
                 </div>
                 <div class="vu-peak" id="vu-rp" style="right:100%"></div>
               </div>
-              <div class="vu-scale"><span>-40</span><span>-20</span><span>-10</span><span>-6</span><span>-3</span><span>0</span></div>
+              <div class="vu-scale"><span>-60</span><span>-18</span><span>-12</span><span>-6</span><span>-3</span><span>0</span></div>
             </div>
           </div>
 
@@ -1398,8 +1411,11 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
               <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);">PCM5102</span>
             </div>
             <div class="settings-row" style="border-bottom:none;">
-              <div class="settings-label">Reboot</div>
-              <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/reboot',{method:'POST'})">Reboot</button>
+              <div class="settings-label">System</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/reboot',{method:'POST'})">Reboot</button>
+                <button class="btn" style="color:var(--orange);border-color:var(--orange);" onclick="if(confirm('Shutdown?')) fetch('/api/shutdown',{method:'POST'}).then(()=>{document.body.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#fff;font-size:18px;\'>Wyłączanie PylonisAmp…</div>';})">Shutdown</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1446,6 +1462,16 @@ function showPage(id, btn) {
                    inputs:'Inputs', network:'Network', settings:'Settings' };
   document.getElementById('tb-section').textContent = titles[id] || id;
   if (id === 'bluetooth') loadPairedDevices();
+  // Meters: stop timer gdy wychodzimy, restart gdy wracamy na amplifier
+  if (id === 'amplifier') {
+    if (_vuTimer)  { clearInterval(_vuTimer);       _vuTimer = null; }
+    if (_specRaf)  { cancelAnimationFrame(_specRaf); _specRaf = null; }
+    initMeterMode(_meterMode);
+    startSpectrum();
+    if (_meterMode === 'spectrum') _specRaf = requestAnimationFrame(_specDraw);
+  } else {
+    stopSpectrum();
+  }
 }
 async function loadPairedDevices() {
   const data = await api('/bluetooth/devices');
@@ -1507,24 +1533,33 @@ function updateVolume(v) {
 
 /* ── Toggles ─────────────────────────────────────── */
 function toggleChip(el, key) {
-  el.classList.toggle('on');
   if (key === 'vu' || key === 'spectrum') {
-    const vuOn = document.getElementById('chip-vu').classList.contains('on');
-    const spOn = document.getElementById('chip-spectrum').classList.contains('on');
+    const chipVu = document.getElementById('chip-vu');
+    const chipSp = document.getElementById('chip-spectrum');
+    const wasOn  = el.classList.contains('on');
+    chipVu.classList.remove('on');
+    chipSp.classList.remove('on');
+    if (!wasOn) el.classList.add('on');
+    const spOn = chipSp.classList.contains('on');
+    const vuOn = chipVu.classList.contains('on');
     const active = vuOn || spOn;
-    document.getElementById('meter-container').style.display = active ? '' : 'none';
-    if (active) {
-      const mode = spOn ? 'spectrum' : 'vu';
-      setMeterMode(mode, document.querySelector(mode==='spectrum' ? '.meter-tab:last-child' : '.meter-tab'));
-    } else { stopSpectrum(); }
-  }
-  if (key === 'loudness') {
+    const mc = document.getElementById('meter-container');
+    if (mc) mc.style.display = active ? '' : 'none';
+    const newMode = spOn ? 'spectrum' : (vuOn ? 'vu' : 'off');
+    if (active) { setMeterMode(newMode, null); } else { stopSpectrum(); }
+    _meterMode = newMode;
+    api('/setting', 'POST', {key: 'meter_mode', value: newMode});
+  } else if (key === 'loudness') {
+    el.classList.toggle('on');
     const on = el.classList.contains('on');
     const sw = document.getElementById('sw-loudness');
     if (sw) sw.classList.toggle('on', on);
-    api('/setting','POST',{key:'loudness', value: on});
+    api('/setting', 'POST', {key: 'loudness', value: on});
+  } else {
+    el.classList.toggle('on');
   }
 }
+
 function toggleSw(el, key) {
   el.classList.toggle('on');
   const on = el.classList.contains('on');
@@ -1538,40 +1573,65 @@ function toggleSw(el, key) {
 }
 
 /* ── Meter ───────────────────────────────────────── */
-function initMeterMode() {
-  const activeTab = document.querySelector('.meter-tab.active');
-  if (activeTab) {
-    const mode = activeTab.getAttribute('onclick')?.match(/setMeterMode\('(\w+)/)?.[1]
-      || (activeTab.textContent.trim().toLowerCase().includes('spectrum') ? 'spectrum' : 'vu');
-    setMeterMode(mode, activeTab);
+function initMeterMode(mode) {
+  mode = mode || _meterMode || 'vu';
+  _meterMode = mode;
+  const chipVu = document.getElementById('chip-vu');
+  const chipSp = document.getElementById('chip-spectrum');
+  if (chipVu) chipVu.classList.toggle('on', mode === 'vu');
+  if (chipSp) chipSp.classList.toggle('on', mode === 'spectrum');
+  const mc = document.getElementById('meter-container');
+  if (mode === 'off') {
+    if (mc) mc.style.display = 'none';
+    stopSpectrum();
   } else {
-    setMeterMode('vu', document.querySelector('.meter-tab'));
+    if (mc) mc.style.display = '';
+    setMeterMode(mode, mode === 'spectrum'
+      ? document.querySelector('.meter-tab:last-child')
+      : document.querySelector('.meter-tab'));
   }
 }
 
 function setMeterMode(mode, btn) {
   document.querySelectorAll('.meter-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  document.getElementById('vu-display').style.display = mode === 'vu' ? 'flex' : 'none';
-  document.getElementById('spectrum-display').style.display = mode === 'spectrum' ? '' : 'none';
-  if (mode === 'spectrum' || mode === 'vu') startSpectrum(); else stopSpectrum();
+
+  const vuEl   = document.getElementById('vu-display');
+  const spEl   = document.getElementById('spectrum-display');
+  if (vuEl) vuEl.style.display   = (mode === 'vu')       ? 'flex' : 'none';
+  if (spEl) spEl.style.display   = (mode === 'spectrum') ? 'block' : 'none';
+
+  // Zatrzymaj RAF spectrum jeśli przełączamy na VU
+  if (mode !== 'spectrum' && _specRaf) {
+    cancelAnimationFrame(_specRaf);
+    _specRaf = null;
+  }
+  // Uruchom RAF spectrum gdy mode=spectrum (zawsze od nowa po powrocie)
+  if (mode === 'spectrum') {
+    if (_specRaf) cancelAnimationFrame(_specRaf);
+    _specRaf = requestAnimationFrame(_specDraw);
+  }
+
+  startSpectrum();  // zawsze uruchom timer danych (VU + spectrum)
 }
 
-/* VU meter — dane z GStreamer /api/level */
+/* VU meter — dane z GPylonisAmp /api/level */
 let _vuTimer = null;
+let _meterMode = 'vu';  // 'vu'|'spectrum'|'off'
 
 function resetMeters() {
   _setVU(-60, -60, -60, -60);
 }
 
 // VU peak hold — śledzi max RMS z ostatnich 2s
-const VU_PEAK_HOLD = 2000;
-const VU_PEAK_FALL = 0.03;   // dB/ms — wolne opadanie
+const VU_PEAK_HOLD = 800;    // ms trzymania
+const VU_PEAK_FALL = 2.0;    // dB per tick (33ms) ≈ 60 dB/s
 let _vuPeakL = -60, _vuPeakR = -60;
 let _vuPeakLt = 0,  _vuPeakRt = 0;
 let _vuLastRmsL = -60, _vuLastRmsR = -60;
 
 function _setVU(rmsL, rmsR, peakL, peakR) {
+  // VU metr: skala -60..0 dBFS, marker 0VU = -18 dBFS
   const toP = db => Math.max(0, Math.min(100, (db + 60) / 60 * 100));
   const tL = document.getElementById('vu-tl');
   const tR = document.getElementById('vu-tr');
@@ -1586,11 +1646,13 @@ function _setVU(rmsL, rmsR, peakL, peakR) {
   tL.style.setProperty('--vu-mask', (100 - toP(rmsL)) + '%');
   tR.style.setProperty('--vu-mask', (100 - toP(rmsR)) + '%');
 
-  // Peak = max RMS (nie peak z GStreamer który jest zawsze blisko 0dB)
+  // Peak = max RMS (nie peak z GPylonisAmp który jest zawsze blisko 0dB)
+  // Peak hold: trzymaj VU_PEAK_HOLD ms, potem opadaj VU_PEAK_FALL dB/ms
   if (rmsL >= _vuPeakL) { _vuPeakL = rmsL; _vuPeakLt = now; }
-  else if (now - _vuPeakLt > VU_PEAK_HOLD) _vuPeakL -= VU_PEAK_FALL * (now - _vuPeakLt - VU_PEAK_HOLD) * 0.01;
+  else if (now - _vuPeakLt > VU_PEAK_HOLD) { _vuPeakL = Math.max(-60, _vuPeakL - VU_PEAK_FALL); }
   if (rmsR >= _vuPeakR) { _vuPeakR = rmsR; _vuPeakRt = now; }
-  else if (now - _vuPeakRt > VU_PEAK_HOLD) _vuPeakR -= VU_PEAK_FALL * (now - _vuPeakRt - VU_PEAK_HOLD) * 0.01;
+  else if (now - _vuPeakRt > VU_PEAK_HOLD) { _vuPeakR = Math.max(-60, _vuPeakR - VU_PEAK_FALL); }
+  else if (now - _vuPeakRt > VU_PEAK_HOLD) _vuPeakR -= VU_PEAK_FALL;
   _vuPeakL = Math.max(-61, Math.min(0, _vuPeakL));
   _vuPeakR = Math.max(-61, Math.min(0, _vuPeakR));
   if (lp) lp.style.right = (100 - toP(_vuPeakL)) + '%';
@@ -1605,26 +1667,28 @@ async function _vuPoll() {
 }
 
 /* ── Spectrum analyser (pseudo-FFT z RMS) ── */
-let _specBands = new Float32Array(16).fill(-60);
-let _specPeaks = new Float32Array(16).fill(-60);
-let _specPeakTtl = new Uint8Array(16).fill(0);
+let _specBands = new Float32Array(32).fill(-60);
+let _specPeaks = new Float32Array(32).fill(-60);
+let _specPeakTtl = new Uint8Array(32).fill(0);
 let _specRaf = null;
 let _meterBusy = false;  // guard — nie wysyłaj gdy poprzedni request w locie
 let _specTimer = null;
 let _specLastLevel = {rms_l:-60, rms_r:-60, peak_l:-60, peak_r:-60};
-let _specLastBands = new Array(16).fill(-60);
+let _specLastBands = new Array(32).fill(-60);
 
 function _specDraw() {
   const canvas = document.getElementById('spectrum-canvas');
-  if (!canvas || canvas.offsetParent === null) { _specRaf = requestAnimationFrame(_specDraw); return; }
+  if (!canvas) { _specRaf = null; return; }
+  // Jeśli canvas ukryty — zatrzymaj RAF (setMeterMode go wznowi)
+  if (canvas.offsetParent === null) { _specRaf = null; return; }
   // Dopasuj rozdzielczość do rozmiaru wyświetlanego
   const W = canvas.offsetWidth || 300, H = 120;
   if (canvas.width !== W || canvas.height !== H) { canvas.width=W; canvas.height=H; }
   const ctx = canvas.getContext('2d');
-  const n = _specBands.length;  // 16
+  const n = 32;  // 32 pasma logarytmiczne 20–20000 Hz (po mapowaniu w backend)
   const gap = 2, bw = (W - gap*(n-1)) / n;
 
-  // Użyj prawdziwych danych FFT z GStreamer spectrum lub fallback RMS
+  // Użyj prawdziwych danych FFT z GPylonisAmp spectrum lub fallback RMS
   const hasFft = _specLastBands && _specLastBands.some(v => v > -58);
   const avgRms = (_specLastLevel.rms_l + _specLastLevel.rms_r) / 2;
   for (let i = 0; i < n; i++) {
@@ -1677,11 +1741,11 @@ function _specDraw() {
 function startSpectrum() {
   if (_vuTimer) return;
   // Jeden request co 100ms — level + spectrum razem
-  _vuTimer = setInterval(() => {
+  _vuTimer = setInterval(() => {  // 30fps = 33ms
     if (_meterBusy) return;
     _meterBusy = true;
     const ctrl = new AbortController();
-    const tid = setTimeout(() => { ctrl.abort(); _meterBusy = false; }, 150);
+    const tid = setTimeout(() => { ctrl.abort(); _meterBusy = false; }, 80);
     fetch('/api/meters', {signal: ctrl.signal})
       .then(r => r.json())
       .then(d => {
@@ -1694,7 +1758,7 @@ function startSpectrum() {
         }
       })
       .catch(() => { clearTimeout(tid); _meterBusy = false; });
-  }, 120);
+  }, 33);   // 30fps
   if (!_specRaf) _specDraw();
 }
 function stopSpectrum() {
@@ -1966,18 +2030,23 @@ function applyStatus(data) {
     if(chip) chip.classList.toggle('on', data.loudness);
     if(sw)   sw.classList.toggle('on', data.loudness);
   }
-  if (data.direct != null) applyDirectState(data.direct);
+  if (data.direct   != null) applyDirectState(data.direct);
+  if (data.meter_mode != null) initMeterMode(data.meter_mode);
+  if (data.autogain != null) {
+    const sw = document.getElementById('sw-autogain');
+    if (sw) sw.classList.toggle('on', data.autogain);
+  }
   // Active source buttons
   if (data.active) {
     state.source=data.active;
     document.querySelectorAll('.source-btn').forEach(b=>{
       b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'"+data.active+"'"));
     });
-    // Tytuł zakładki: "Streamer · NazwaŹródła"
+    // Tytuł zakładki: "PylonisAmp · NazwaŹródła"
     const srcNames = {radio: (data.status&&data.status.station)||'Radio',
                       bluetooth:'Bluetooth', phono:'Phono',
                       line1:'Line 1', line2:'Line 2', spdif:'S/PDIF'};
-    document.title = 'Streamer · ' + (srcNames[data.active] || data.active);
+    document.title = 'PylonisAmp · ' + (srcNames[data.active] || data.active);
   }
   // Now playing / metadata
   const st=data.status||{};
@@ -1992,7 +2061,11 @@ function applyStatus(data) {
     const stream=st.stream||{};
     if (stream.bitrate_kbps) subParts.push(stream.bitrate_kbps+' kbps');
     if (stream.codec) subParts.push(stream.codec);
-    if (stream.sample_rate) subParts.push((stream.sample_rate/1000).toFixed(1)+' kHz');
+    if (stream.sample_rate) {
+      let srStr = (stream.sample_rate/1000).toFixed(1)+' kHz';
+      if (stream.bit_depth) srStr += '/'+stream.bit_depth+'bit';
+      subParts.push(srStr);
+    }
     if (stream.channels) subParts.push(stream.channels === 2 ? 'Stereo' : stream.channels+'ch');
     if (!subParts.length) subParts.push((st.station||data.active||''),(st.state||''));
     if (npSub) npSub.textContent=subParts.filter(Boolean).join('  ·  ');

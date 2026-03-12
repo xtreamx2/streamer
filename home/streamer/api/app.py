@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tom's Streamer v0.10.3.35
+PylonisAmp v0.10.4.16
 Flask + SocketIO — serwer Web UI i REST API.
 
 Uruchomienie:
@@ -273,7 +273,7 @@ threading.Thread(target=_status_push, daemon=True, name='status-push').start()
 # ── Main ───────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    log.info(f"Streamer v0.10.3.35 — http://0.0.0.0:{WEB_PORT}")
+    log.info(f"Streamer v0.10.4.16 — http://0.0.0.0:{WEB_PORT}")
     log.info(f"ALSA: {ALSA_DEVICE}")
     log.info(f"UART: {UART_PORT} @ {UART_BAUD}")
     socketio.run(app, host='0.0.0.0', port=WEB_PORT, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
