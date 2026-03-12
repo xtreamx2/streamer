@@ -219,11 +219,11 @@ v0.10.3.35:
 - Mono - usunięty z UI całkowicie
 
 v0.10.3.34:
-EQ save 500 - active_id() nie istniało, zastąpione active_source().SOURCE_ID
-werkzeug logi - wyciszone (tylko WARNING+), błędy będą widoczne w journalctl
-loadUserPresetNames - usunięty duplikat
-Gain per wejście - suwaki -10..+6 dB w Settings → "Gain wejść"
-Auto Gain - przywrócony z nową logiką CLIP
+- EQ save 500 - active_id() nie istniało, zastąpione active_source().SOURCE_ID
+- werkzeug logi - wyciszone (tylko WARNING+), błędy będą widoczne w journalctl
+- loadUserPresetNames - usunięty duplikat
+- Gain per wejście - suwaki -10..+6 dB w Settings → "Gain wejść"
+- Auto Gain - przywrócony z nową logiką CLIP
 
 v0.10.3.33:
 - 500 na /api/status - _last_rx był niezdefiniowany w __init__, stąd AttributeError
@@ -257,9 +257,9 @@ v0.10.3.29 - bug APP (nie włącza się):
 - User 1 / User 2 - presety EQ w ustawieniach; "Save →" zapisuje bieżące nastawy, "Rename" zmienia nazwę
 - initMeterMode - spectrum/VU włącza się automatycznie przy ładowaniu strony
 
-'''
+```
 loudness w tym projekcie jest tylko jako preset EQ (zestaw gainów) - nie jest jeszcze stosowany jako dodatkowa korekta na bieżący preset.
-'''
+```
 
 v0.10.3.25-28:
 - ciągła poprawa spectrum analizator
