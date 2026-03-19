@@ -228,6 +228,7 @@ class SourceManager:
         """Zapisz dowolny klucz w config (np. last_station_id, loudness)."""
         self._config[key] = value
         self._save_config()
+        self._save_config()
 
     def get_config(self, key: str, default=None):
         return self._config.get(key, default)
@@ -238,11 +239,24 @@ class SourceManager:
     # ── Config ─────────────────────────────────────────────────
 
     def _load_config(self) -> dict:
+        defaults = {
+            'last_source':     'radio',
+            'last_station_id': None,
+            'volume':          50,
+            'loudness':        True,
+            'autogain':        True,
+            'meter_mode':      'vu',
+            'source_gains':    {},
+            'eq_gains':        {},
+            'direct':          False,
+        }
         try:
             with open(CONFIG_PATH) as f:
-                return json.load(f)
+                saved = json.load(f)
+            defaults.update(saved)   # saved nadpisuje defaults
+            return defaults
         except Exception:
-            return {}
+            return defaults
 
     def _save_config(self, debounce: bool = False):
         """Zapisz config na dysk. debounce=True: max raz na 5s."""

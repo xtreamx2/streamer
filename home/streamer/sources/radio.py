@@ -334,7 +334,7 @@ class RadioSource(AudioSource):
                     m = _re.search(r'magnitude=[(]float[)][{]([^}]+)[}]', raw)
                     if m:
                         vals = [float(x.strip()) for x in m.group(1).split(',') if x.strip()]
-                        if len(vals) >= 64:
+                        if len(vals) >= 32:
                             self._spectrum_bands = _log_bands(vals)
                         else:
                             self._spectrum_bands = [max(-60.0, min(0.0, v)) for v in vals[:32]]

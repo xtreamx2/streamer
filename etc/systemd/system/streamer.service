@@ -1,5 +1,5 @@
 [Unit]
-Description=PylonisAmp v0.10.4.16
+Description=PylonisAmp v0.10.4.19
 After=network-online.target bluetooth.target sound.target bluealsa.service
 Wants=network-online.target bluetooth.target
 

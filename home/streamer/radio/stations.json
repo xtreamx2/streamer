@@ -8,7 +8,7 @@
       "genre": "Pop/Rock",
       "bitrate": 128,
       "codec": "MP3",
-      "favorite": false,
+      "favorite": true,
       "enabled": true
     },
     {

@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="v0.10.4.16">
+<meta name="version" content="v0.10.4.19">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PylonisAmp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -234,7 +234,7 @@ body {
   background: rgba(240,130,13,0.08);
   box-shadow: 0 0 16px var(--orange-glow);
 }
-.source-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+.source-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 .source-btn svg { width: 22px; height: 22px; }
 .source-btn .src-label {
   font-size: 11px;
@@ -1047,7 +1047,7 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
               <span class="src-label">BT</span>
               <span class="src-sub">Sink</span>
             </button>
-            <button class="source-btn" onclick="setSource(this,'phono')">
+            <button class="source-btn disabled" onclick="return false;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
               <span class="src-label">Phono</span>
               <span class="src-sub">RIAA</span>
@@ -1058,17 +1058,17 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
               <span class="src-label">S/PDIF</span>
               <span class="src-sub">Digital</span>
             </button>
-            <button class="source-btn disabled" style="cursor:not-allowed;" title="Niedostępne — brak PCM1808">
+            <button class="source-btn disabled" title="Niedostępne — brak PCM1808">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
               <span class="src-label">Line In 1</span>
               <span class="src-sub">wkrótce</span>
             </button>
-            <button class="source-btn disabled" style="cursor:not-allowed;" title="Niedostępne — brak PCM1808">
+            <button class="source-btn disabled" title="Niedostępne — brak PCM1808">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
               <span class="src-label">Line In 2</span>
               <span class="src-sub">wkrótce</span>
             </button>
-            <button class="source-btn disabled" style="cursor:not-allowed;" title="Niedostępne">
+            <button class="source-btn disabled" title="Niedostępne">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="9" width="13" height="6" rx="1"/><polyline points="15 12 22 8 22 16 15 12"/></svg>
               <span class="src-label">USB</span>
               <span class="src-sub">wkrótce</span>
@@ -1125,14 +1125,6 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <!-- Toggles -->
         <div class="card" style="padding:14px 20px;">
           <div class="toggles-row">
-            <div class="toggle-chip on" onclick="toggleChip(this,'vu')" id="chip-vu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="3" height="8" rx="1" fill="currentColor" stroke="none"/><rect x="7" y="5" width="3" height="11" rx="1" fill="currentColor" stroke="none"/><rect x="12" y="3" width="3" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="17" y="6" width="3" height="10" rx="1" fill="currentColor" stroke="none"/></svg>
-              VU Meter
-            </div>
-            <div class="toggle-chip" onclick="toggleChip(this,'spectrum')" id="chip-spectrum">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              Spectrum
-            </div>
             <div class="toggle-chip on" onclick="toggleChip(this,'loudness')" id="chip-loudness">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
               Loudness
@@ -1295,20 +1287,20 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
     <div class="page" id="page-inputs">
       <div class="section-title">Analog Inputs</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
-        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('phono')">
+        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
           <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--orange);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
           </div>
           <div style="flex:1"><div style="font-weight:600;font-size:15px;">Phono</div><div style="font-size:12px;color:var(--text3);">RIAA EQ · PCM1808</div></div>
           <span style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.06em;">ACTIVE</span>
         </div>
-        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('line1')">
+        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
           <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
           </div>
           <div style="flex:1"><div style="font-weight:600;font-size:15px;">Line In 1</div><div style="font-size:12px;color:var(--text3);">PCM1808</div></div>
         </div>
-        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('line2')">
+        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
           <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
           </div>
@@ -1413,8 +1405,8 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
             <div class="settings-row" style="border-bottom:none;">
               <div class="settings-label">System</div>
               <div style="display:flex;gap:8px;">
-                <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/reboot',{method:'POST'})">Reboot</button>
-                <button class="btn" style="color:var(--orange);border-color:var(--orange);" onclick="if(confirm('Shutdown?')) fetch('/api/shutdown',{method:'POST'}).then(()=>{document.body.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#fff;font-size:18px;\'>Wyłączanie PylonisAmp…</div>';})">Shutdown</button>
+                <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/system/reboot',{method:'POST'})">Reboot</button>
+                <button class="btn" style="color:var(--orange);border-color:var(--orange);" onclick="if(confirm('Shutdown?')) fetch('/api/system/shutdown',{method:'POST'}).then(()=>{document.body.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#fff;font-size:18px;\'>Wyłączanie PylonisAmp…</div>';})">Shutdown</button>
               </div>
             </div>
           </div>
@@ -1464,13 +1456,13 @@ function showPage(id, btn) {
   if (id === 'bluetooth') loadPairedDevices();
   // Meters: stop timer gdy wychodzimy, restart gdy wracamy na amplifier
   if (id === 'amplifier') {
-    if (_vuTimer)  { clearInterval(_vuTimer);       _vuTimer = null; }
-    if (_specRaf)  { cancelAnimationFrame(_specRaf); _specRaf = null; }
-    initMeterMode(_meterMode);
-    startSpectrum();
-    if (_meterMode === 'spectrum') _specRaf = requestAnimationFrame(_specDraw);
+    // Wymuś restart — kasuj timer żeby startSpectrum() mógł uruchomić nowy
+    if (_vuTimer) { clearInterval(_vuTimer); _vuTimer = null; }
+    if (_specRaf) { cancelAnimationFrame(_specRaf); _specRaf = null; }
+    initMeterMode();   // przywróć aktywny tryb (VU lub Spectrum)
+    startSpectrum();   // uruchom timer danych
   } else {
-    stopSpectrum();
+    stopSpectrum();    // zwolnij zasoby gdy nie na amplifier
   }
 }
 async function loadPairedDevices() {
@@ -1534,32 +1526,33 @@ function updateVolume(v) {
 /* ── Toggles ─────────────────────────────────────── */
 function toggleChip(el, key) {
   if (key === 'vu' || key === 'spectrum') {
+    // Radio behaviour — tylko jeden aktywny
     const chipVu = document.getElementById('chip-vu');
     const chipSp = document.getElementById('chip-spectrum');
-    const wasOn  = el.classList.contains('on');
+    const wasOn = el.classList.contains('on');
+    // Wyłącz oba, potem włącz kliknięty (jeśli nie był aktywny)
     chipVu.classList.remove('on');
     chipSp.classList.remove('on');
-    if (!wasOn) el.classList.add('on');
+    if (!wasOn) el.classList.add('on');  // toggle off jeśli kliknięto aktywny
     const spOn = chipSp.classList.contains('on');
     const vuOn = chipVu.classList.contains('on');
     const active = vuOn || spOn;
-    const mc = document.getElementById('meter-container');
-    if (mc) mc.style.display = active ? '' : 'none';
-    const newMode = spOn ? 'spectrum' : (vuOn ? 'vu' : 'off');
-    if (active) { setMeterMode(newMode, null); } else { stopSpectrum(); }
-    _meterMode = newMode;
-    api('/setting', 'POST', {key: 'meter_mode', value: newMode});
+    document.getElementById('meter-container').style.display = active ? '' : 'none';
+    if (active) {
+      setMeterMode(spOn ? 'spectrum' : 'vu', null);
+    } else {
+      stopSpectrum();
+    }
   } else if (key === 'loudness') {
     el.classList.toggle('on');
     const on = el.classList.contains('on');
     const sw = document.getElementById('sw-loudness');
     if (sw) sw.classList.toggle('on', on);
-    api('/setting', 'POST', {key: 'loudness', value: on});
+    api('/setting','POST',{key:'loudness', value: on});
   } else {
     el.classList.toggle('on');
   }
 }
-
 function toggleSw(el, key) {
   el.classList.toggle('on');
   const on = el.classList.contains('on');
@@ -1573,22 +1566,14 @@ function toggleSw(el, key) {
 }
 
 /* ── Meter ───────────────────────────────────────── */
-function initMeterMode(mode) {
-  mode = mode || _meterMode || 'vu';
-  _meterMode = mode;
-  const chipVu = document.getElementById('chip-vu');
-  const chipSp = document.getElementById('chip-spectrum');
-  if (chipVu) chipVu.classList.toggle('on', mode === 'vu');
-  if (chipSp) chipSp.classList.toggle('on', mode === 'spectrum');
-  const mc = document.getElementById('meter-container');
-  if (mode === 'off') {
-    if (mc) mc.style.display = 'none';
-    stopSpectrum();
+function initMeterMode() {
+  const activeTab = document.querySelector('.meter-tab.active');
+  if (activeTab) {
+    const mode = activeTab.getAttribute('onclick')?.match(/setMeterMode\('(\w+)/)?.[1]
+      || (activeTab.textContent.trim().toLowerCase().includes('spectrum') ? 'spectrum' : 'vu');
+    setMeterMode(mode, activeTab);
   } else {
-    if (mc) mc.style.display = '';
-    setMeterMode(mode, mode === 'spectrum'
-      ? document.querySelector('.meter-tab:last-child')
-      : document.querySelector('.meter-tab'));
+    setMeterMode('vu', document.querySelector('.meter-tab'));
   }
 }
 
@@ -1617,7 +1602,6 @@ function setMeterMode(mode, btn) {
 
 /* VU meter — dane z GPylonisAmp /api/level */
 let _vuTimer = null;
-let _meterMode = 'vu';  // 'vu'|'spectrum'|'off'
 
 function resetMeters() {
   _setVU(-60, -60, -60, -60);
@@ -1992,6 +1976,8 @@ async function btConnectOrPair(mac, isPaired, btn) {
 
 /* ── Network ─────────────────────────────────────── */
 async function scanWifi() {
+  const toggleBtn = document.getElementById('btn-wifi-toggle');
+  if (toggleBtn && toggleBtn.textContent.trim() === 'WiFi ON') return;  // wifi wyłączone
   const data=await api('/network/scan');
   const list=document.getElementById('wifi-list');
   if (!list||!data.networks) return;
@@ -2031,7 +2017,6 @@ function applyStatus(data) {
     if(sw)   sw.classList.toggle('on', data.loudness);
   }
   if (data.direct   != null) applyDirectState(data.direct);
-  if (data.meter_mode != null) initMeterMode(data.meter_mode);
   if (data.autogain != null) {
     const sw = document.getElementById('sw-autogain');
     if (sw) sw.classList.toggle('on', data.autogain);
