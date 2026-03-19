@@ -114,6 +114,9 @@ Analog input (PCM1808)
 
 📊 Changelog
 
+PylonisAmp v0.10.4.19:
+- Not now
+
 PylonisAmp v0.10.4.16:
 - Shutdown - naprawiony, pojawia się obok Reboot w sekcji "System" w Settings
 - Phono - pointer-events:none + opacity:0.4 — nie można kliknąć
