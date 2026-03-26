@@ -21,3 +21,6 @@ psutil>=5.9
 
 # Serial (UART RP2040)
 pyserial>=3.5
+
+Pillow
+requests

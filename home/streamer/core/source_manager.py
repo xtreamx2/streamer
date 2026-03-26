@@ -1,3 +1,4 @@
+import threading
 #!/usr/bin/env python3
 """
 Source Manager — zarządza aktywnym źródłem audio.
@@ -17,6 +18,7 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), '..', 'config.json')
 
 
 class SourceManager:
+    _config_lock = threading.Lock()
     def __init__(self,
                  alsa_device: str = 'hw:sndrpihifiberry,0',
                  on_state_change: Optional[Callable] = None,
@@ -240,20 +242,38 @@ class SourceManager:
 
     def _load_config(self) -> dict:
         defaults = {
+            'version':         '3.0',
             'last_source':     'radio',
             'last_station_id': None,
             'volume':          50,
+            'balance':         0,
             'loudness':        True,
+            'mono':            False,
             'autogain':        True,
-            'meter_mode':      'vu',
-            'source_gains':    {},
-            'eq_gains':        {},
             'direct':          False,
+            'meter_mode':      'vu',
+            'uart_port':       '/dev/ttyAMA0',
+            'uart_baud':       115200,
+            'source_gains':    {},
+            'eq': {
+                'radio':     [0]*10,
+                'bluetooth': [0]*10,
+                'phono':     [0]*10,
+                'line1':     [0]*10,
+                'line2':     [0]*10,
+                'spdif':     [0]*10,
+            },
+            'user_presets':  {},
+            'preset_names':  {},
         }
         try:
             with open(CONFIG_PATH) as f:
                 saved = json.load(f)
-            defaults.update(saved)   # saved nadpisuje defaults
+            for k, v in saved.items():
+                if isinstance(v, dict) and isinstance(defaults.get(k), dict):
+                    defaults[k].update(v)
+                else:
+                    defaults[k] = v
             return defaults
         except Exception:
             return defaults

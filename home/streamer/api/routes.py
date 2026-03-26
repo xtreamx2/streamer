@@ -99,7 +99,9 @@ def api_status():
         'source_gains': sm._config.get('source_gains', {}),
         'mono':      sm.get_config('mono', False),
         'network':   net_status,
-        'uart':      uart.connected,  # port otwarty (ping/pong gdy RP2040 ma firmware)
+        'uart':      uart.active,
+        'cd_ready':  getattr(app_state.get('cd'), 'disc_ready', False) if app_state.get('cd') else False,
+        'cd_disc':   getattr(app_state.get('cd'), 'disc_ready', None) if app_state.get('cd') else None,  # port otwarty (ping/pong gdy RP2040 ma firmware)
         'cpu_temp':  cpu_temp,
         'cpu_load':  cpu_load,
         'cpu_hot':   bool(cpu_temp is not None and cpu_temp >= 70.0),
