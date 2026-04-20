@@ -1,0 +1,65 @@
+{
+  "version": "3.0",
+  "stations": [
+    {
+      "id": "rmf",
+      "name": "RMF FM",
+      "url": "https://rs201-krk.rmfstream.pl/rmf_fm",
+      "genre": "Pop/Rock",
+      "bitrate": 128,
+      "codec": "MP3",
+      "favorite": false,
+      "enabled": true
+    },
+    {
+      "id": "tok",
+      "name": "TOK FM",
+      "url": "https://n-22-14.dcs.redcdn.pl/sc/o2/Eurozet/live/tokfm.livx?audio=5",
+      "genre": "News",
+      "bitrate": 128,
+      "codec": "AAC",
+      "favorite": false,
+      "enabled": true
+    },
+    {
+      "id": "trancepulse",
+      "name": "TrancePulse",
+      "url": "http://stream.trance.ie:8000/tpmixes",
+      "genre": "Trance",
+      "bitrate": 1400,
+      "codec": "FLAC",
+      "favorite": true,
+      "enabled": true
+    },
+    {
+      "id": "radioclubtr",
+      "name": "Radio Club Trance",
+      "url": "https://stream.radioclubtrance.com/stream",
+      "genre": "Trance",
+      "bitrate": 128,
+      "codec": "MP3",
+      "favorite": false,
+      "enabled": true
+    },
+    {
+      "id": "dhectar",
+      "name": "DHECTAR Hits",
+      "url": "https://stream.dhectar.com/hits",
+      "genre": "Hits",
+      "bitrate": 128,
+      "codec": "MP3",
+      "favorite": false,
+      "enabled": true
+    },
+    {
+      "id": "intense",
+      "name": "Intense Radio",
+      "url": "https://www.intenseradio.com/stream",
+      "genre": "Electronic",
+      "bitrate": 256,
+      "codec": "MP3",
+      "favorite": true,
+      "enabled": true
+    }
+  ]
+}

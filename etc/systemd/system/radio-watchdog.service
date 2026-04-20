@@ -1,0 +1,16 @@
+[Unit]
+Description=Radio Watchdog - Auto-recover on stream stop
+After=mpd.service streamer.service
+Wants=mpd.service streamer.service
+
+[Service]
+Type=simple
+User=tom
+WorkingDirectory=/home/tom/streamer
+ExecStart=/home/tom/streamer/radio_watchdog.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
