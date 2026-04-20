@@ -24,8 +24,8 @@ log = logging.getLogger('cover_manager')
 
 COVERS_DIR  = Path(__file__).parent.parent / 'covers'
 COVER_SIZE  = (240, 240)
-JPEG_QUALITY = 85
-HTTP_TIMEOUT = 5  # sekundy
+JPEG_QUALITY = 95
+HTTP_TIMEOUT = 10  # sekundy
 
 COVERS_DIR.mkdir(exist_ok=True)
 
@@ -64,7 +64,6 @@ def get_cover(artist: str, title: str, station_name: str = '') -> str | None:
 
     return _download_and_cache(img_url, cache_path)
 
-
 def get_cover_url(artist: str, title: str, station_name: str = '') -> str | None:
     """Zwróć URL do serwowania przez /api/cover — relative path."""
     path = get_cover(artist, title, station_name)
@@ -96,7 +95,7 @@ def _try_musicbrainz(artist: str, title: str) -> str | None:
 
         data = r.json()
         recordings = data.get('recordings', [])
-        
+
         for rec in recordings:
             for release in rec.get('releases', []):
                 rid = release.get('id')
@@ -114,7 +113,6 @@ def _try_musicbrainz(artist: str, title: str) -> str | None:
     except Exception as e:
         log.debug(f'MusicBrainz error: {e}')
     return None
-
 
 def _try_itunes(artist: str, title: str) -> str | None:
     """iTunes Search API."""
@@ -137,7 +135,6 @@ def _try_itunes(artist: str, title: str) -> str | None:
     except Exception as e:
         log.debug(f'iTunes error: {e}')
     return None
-
 
 def _try_lastfm(artist: str, title: str) -> str | None:
     """Last.fm API (bez klucza — public endpoint)."""
@@ -166,7 +163,6 @@ def _try_lastfm(artist: str, title: str) -> str | None:
     except Exception as e:
         log.debug(f'Last.fm error: {e}')
     return None
-
 
 def _try_station_logo(station_name: str) -> str | None:
     """
@@ -208,11 +204,12 @@ def _download_and_cache(url: str, path: Path) -> str | None:
         r = requests.get(url, timeout=HTTP_TIMEOUT, stream=True)
         if r.status_code != 200:
             return None
-        
+
         img = Image.open(BytesIO(r.content)).convert('RGB')
         img = img.resize(COVER_SIZE, Image.LANCZOS)
         img.save(str(path), 'JPEG', quality=JPEG_QUALITY)
         log.info(f'Cover saved: {path.name}')
+
         return str(path)
     except Exception as e:
         log.warning(f'Cover download error ({url}): {e}')

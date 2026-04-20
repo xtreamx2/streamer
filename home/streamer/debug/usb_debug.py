@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-PylonisAmp — UART Debug
-Testuje połączenie z RP2040 przez /dev/ttyAMA0
+PylonisAmp — USB Debug
+Testuje połączenie z RP2040 przez /dev/ttyACM0
 Log: streamer/debug/debug.log
 
 Użycie:
-  python3 uart_debug.py
-  python3 uart_debug.py --port /dev/ttyAMA0 --baud 115200
+  python3 usb_debug.py
+  python3 usb_debug.py --port /dev/ttyACM0 --baud 115200
 """
 
 import serial
@@ -19,7 +19,7 @@ import os
 from datetime import datetime
 
 # ── Konfiguracja ──────────────────────────────────────────────────
-DEFAULT_PORT  = '/dev/ttyAMA0'
+DEFAULT_PORT  = '/dev/ttyACM0'
 DEFAULT_BAUD  = 115200
 HB_INTERVAL   = 0.5          # heartbeat co 500ms
 HB_TIMEOUT    = 3            # 3 nieudane HB = error
@@ -27,7 +27,7 @@ LOG_FILE      = os.path.join(os.path.dirname(__file__), 'debug.log')
 
 # ── Logger ────────────────────────────────────────────────────────
 def setup_logger():
-    log = logging.getLogger('uart_debug')
+    log = logging.getLogger('usb_debug')
     log.setLevel(logging.DEBUG)
 
     fmt = logging.Formatter(
@@ -63,7 +63,7 @@ def send(ser, obj, log):
 # ── Główna pętla ──────────────────────────────────────────────────
 def run(port, baud, log):
     log.info('=' * 60)
-    log.info(f'PylonisAmp UART Debug start')
+    log.info(f'PylonisAmp USB Debug start')
     log.info(f'Port: {port}  Baud: {baud}')
     log.info(f'HB interval: {HB_INTERVAL}s  Timeout: {HB_TIMEOUT} missed')
     log.info('=' * 60)
@@ -81,7 +81,7 @@ def run(port, baud, log):
         log.info(f'Port otwarty: {ser.name}')
     except serial.SerialException as e:
         log.error(f'Nie można otworzyć portu {port}: {e}')
-        log.error('Sprawdź: ls /dev/ttyAMA0  oraz  sudo raspi-config → Interface → Serial')
+        log.error('Sprawdź: ls /dev/ttyACM0')
         sys.exit(1)
 
     # ── Stan połączenia ───────────────────────────────────────────
@@ -230,8 +230,8 @@ def handle_event(obj, log):
     elif evt == 'display_error':
         log.error(f'DISPLAY ERROR: {obj.get("msg", "?")}')
 
-    elif evt == 'uart_overflow':
-        log.error('UART OVERFLOW — RP2040 zgłasza przepełnienie bufora')
+    elif evt == 'usb_overflow':
+        log.error('USB OVERFLOW — RP2040 zgłasza przepełnienie bufora')
 
     elif evt == 'shutdown_cancelled':
         log.info('SHUTDOWN anulowany przez RP2040')
@@ -245,7 +245,7 @@ def handle_event(obj, log):
 
 # ── Entry point ───────────────────────────────────────────────────
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='PylonisAmp UART Debug')
+    parser = argparse.ArgumentParser(description='PylonisAmp USB Debug')
     parser.add_argument('--port', default=DEFAULT_PORT)
     parser.add_argument('--baud', type=int, default=DEFAULT_BAUD)
     args = parser.parse_args()

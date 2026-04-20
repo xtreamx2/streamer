@@ -1,4 +1,3 @@
-import re
 #!/usr/bin/env python3
 """
 Źródło: Radio internetowe (GStreamer souphttpsrc + decodebin + EQ + alsasink).
@@ -19,37 +18,58 @@ from .base import AudioSource
 Gst.init(None)
 log = logging.getLogger(__name__)
 
+import re
+
 EQ_BANDS      = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000]
 EQ_BAND_NAMES = ['60Hz','170Hz','310Hz','600Hz','1kHz','3kHz','6kHz','12kHz','14kHz','16kHz']
 FLAT_PRESET   = [0.0] * 10
-
-
-def _log_bands(gst_vals: list, n_out: int = 32,
-               f_min: float = 20.0, f_max: float = 20000.0,
-               sample_rate: int = 44100) -> list:
-    """Mapuj liniowe pasma GStreamer na n_out pasm logarytmicznych 20-20000 Hz."""
-    import math
-    n_in = len(gst_vals)
-    hz_per_band = (sample_rate / 2.0) / n_in
-    result = []
-    for i in range(n_out):
-        f_lo = f_min * (f_max / f_min) ** (i / n_out)
-        f_hi = f_min * (f_max / f_min) ** ((i + 1) / n_out)
-        idx_lo = max(0, int(f_lo / hz_per_band))
-        idx_hi = min(n_in - 1, int(f_hi / hz_per_band))
-        if idx_lo == idx_hi:
-            val = gst_vals[idx_lo]
-        else:
-            # Maksimum z zakresu (bardziej czytelne niż średnia)
-            val = max(gst_vals[idx_lo:idx_hi + 1])
-        result.append(max(-60.0, min(0.0, val)))
-    return result
 
 
 class RadioSource(AudioSource):
     SOURCE_ID   = 'radio'
     SOURCE_NAME = 'Internet Radio'
     AVAILABLE   = True
+
+    def _log_bands(self, gst_vals, n_out=32):
+        if not hasattr(self, '_prev_bars'):
+            self._prev_bars = [-60.0] * n_out
+            self._peaks = [-60.0] * n_out
+
+        n_in = len(gst_vals)
+        hz_per_band = (44100 / 2.0) / n_in
+        
+        # --- PARAMETRY DLA LEPSZEJ DYNAMIKI ---
+        BAR_FALLOFF = 0.7   # Wolniejsze opadanie dla płynności
+        GAIN = 1.6          # Zwiększony gain dla większego ruchu
+        
+        result = []
+        for i in range(n_out):
+            f_lo = 20.0 * (20000.0 / 20.0) ** (i / n_out)
+            f_hi = 20.0 * (20000.0 / 20.0) ** ((i + 1) / n_out)
+            
+            idx_lo = max(0, int(f_lo / hz_per_band))
+            idx_hi = min(n_in - 1, int(f_hi / hz_per_band))
+            
+            if idx_hi - idx_lo > 2:
+                current_val = sum(gst_vals[idx_lo:idx_hi+1]) / (idx_hi - idx_lo + 1)
+            else:
+                current_val = max(gst_vals[idx_lo:idx_hi+1]) if idx_lo < idx_hi else gst_vals[idx_lo]
+
+            # Poprawiona czułość (usunięto offset psujący dynamikę)
+            current_val = current_val * GAIN
+
+            if current_val > self._prev_bars[i]:
+                bar_final = current_val
+            else:
+                bar_final = self._prev_bars[i] * BAR_FALLOFF + current_val * (1 - BAR_FALLOFF)
+            
+            self._prev_bars[i] = bar_final
+            
+            # Przeskalowanie do 0..-60 (INT)
+            val_to_send = int(max(-60, min(0, bar_final)))
+            result.append(val_to_send)
+            
+        return result
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -58,10 +78,10 @@ class RadioSource(AudioSource):
         self._station_name       = ''
         self._artist             = ''
         self._stream_codec       = ''
-        self._stream_bitrate_kbps = None
-        self._stream_rate        = None
-        self._stream_channels    = None
-        self._stream_bit_depth   = None
+        self._stream_bitrate_kbps = 0
+        self._stream_rate        = 0
+        self._stream_channels    = 0
+        self._stream_bit_depth   = 0
         self._decoder_caps       = ''
         self._volume             = 75
         self._eq_gains           = FLAT_PRESET[:]
@@ -108,7 +128,7 @@ class RadioSource(AudioSource):
             'eq':          self._eq_gains[:],
             'eq_bands':    EQ_BAND_NAMES,
             'stream': {
-                'codec':         self._stream_codec,
+                'codec':         self._stream_codec or 'unknown',
                 'bitrate_kbps':  self._stream_bitrate_kbps,
                 'bit_depth':     self._stream_bit_depth,
                 'sample_rate':   self._stream_rate,
@@ -124,7 +144,7 @@ class RadioSource(AudioSource):
         self._station_name  = station_name
         self._current_title = ''
         self._stream_codec  = ''
-        self._stream_bitrate_kbps = None
+        self._stream_bitrate_kbps = 0
         self._reconnect_url = url
         self._stop_pipeline()
         # Krótka przerwa żeby ALSA zdążyła zwolnić urządzenie
@@ -185,8 +205,8 @@ class RadioSource(AudioSource):
         level.set_property('post-messages', True)
 
         if spectrum:
-            spectrum.set_property('bands',           512)  # wysoka rozdzielczość → mapowanie log w Python
-            spectrum.set_property('interval',   40_000_000)
+            spectrum.set_property('bands',           128)  # wysoka rozdzielczość → mapowanie log w Python
+            spectrum.set_property('interval',   100_000_000)
             spectrum.set_property('threshold',        -60)
             spectrum.set_property('post-messages',   True)
             spectrum.set_property('message-magnitude', True)
@@ -238,6 +258,7 @@ class RadioSource(AudioSource):
     def _on_pad_added(self, decode, pad, convert):
         caps = pad.get_current_caps()
         if caps:
+            log.info(f"DEBUG: Pad added caps: {caps.to_string()}")
             s = caps.get_structure(0)
             name = s.get_name()
             if name.startswith('audio/'):
@@ -253,8 +274,8 @@ class RadioSource(AudioSource):
                         if m:
                             self._stream_bit_depth = int(m.group(1))
                     self._decoder_caps = name
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.error(f"DEBUG: Error parsing caps: {e}")
                 sink_pad = convert.get_static_pad('sink')
                 if not sink_pad.is_linked():
                     pad.link(sink_pad)
@@ -283,6 +304,7 @@ class RadioSource(AudioSource):
 
         elif t == Gst.MessageType.TAG:
             tags = msg.parse_tag()
+            log.info(f"DEBUG: Tags received: {tags.to_string()}")
             artist = None
             title  = None
             ok_a, v_a = tags.get_string('artist')
@@ -312,30 +334,35 @@ class RadioSource(AudioSource):
             if ok_c and v_c and v_c.strip():
                 self._stream_codec = v_c.strip()
 
-            # Próbuj różnych tagów bitrate (FLAC używa nominal-bitrate lub maximum-bitrate)
+            # Próbuj różnych tagów bitrate
             bitrate_raw = None
             for tag_name in ('bitrate', 'nominal-bitrate', 'maximum-bitrate', 'minimum-bitrate'):
                 try:
-                    ok_br, v_br = tags.get_uint(tag_name)
-                    if ok_br and v_br and v_br > 1000:
-                        bitrate_raw = v_br
+                    # Używamy get_value zamiast get_uint, aby uniknąć problemów z typami
+                    val = tags.get_value(tag_name)
+                    if val and isinstance(val, int) and val > 1000:
+                        bitrate_raw = val
+                        log.info(f"DEBUG: Found bitrate tag '{tag_name}': {val}")
                         break
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.debug(f"DEBUG: Error getting tag {tag_name}: {e}")
+            
             if bitrate_raw:
                 self._stream_bitrate_kbps = max(1, int(bitrate_raw // 1000))
+                log.info(f"DEBUG: Bitrate detected: {self._stream_bitrate_kbps}kbps")
+            else:
+                log.info("DEBUG: Bitrate tag not found in: " + tags.to_string())
 
         elif t == Gst.MessageType.ELEMENT:
             s = msg.get_structure()
             if s and s.get_name() == 'spectrum':
                 try:
                     raw = s.to_string()
-                    import re as _re
-                    m = _re.search(r'magnitude=[(]float[)][{]([^}]+)[}]', raw)
+                    m = re.search(r'magnitude=[(]float[)][{]([^}]+)[}]', raw)
                     if m:
                         vals = [float(x.strip()) for x in m.group(1).split(',') if x.strip()]
                         if len(vals) >= 32:
-                            self._spectrum_bands = _log_bands(vals)
+                            self._spectrum_bands = self._log_bands(vals)
                         else:
                             self._spectrum_bands = [max(-60.0, min(0.0, v)) for v in vals[:32]]
                 except Exception:

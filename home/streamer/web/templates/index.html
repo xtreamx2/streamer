@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="v0.10.4.42">
+<meta name="version" content="v0.10.4.43">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PylonisAmp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,6 +53,7 @@ body {
   padding: 16px 0;
   gap: 4px;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .logo {
@@ -94,7 +95,7 @@ body {
   background: var(--blue);
   border-radius: 0 3px 3px 0;
 }
-.nav-btn svg { width: 20px; height: 20px; pointer-events: none; }
+.nav-btn svg { width: 20px; height: 20px; }
 .nav-btn span {
   font-size: 9px;
   font-weight: 600;
@@ -169,7 +170,6 @@ body {
   display: none;
 }
 .page.active { display: block !important; }
-#page-amplifier.active { display: grid !important; }
 
 /* scrollbar */
 ::-webkit-scrollbar { width: 6px; }
@@ -206,7 +206,7 @@ body {
 /* source selector */
 .source-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
 .source-btn {
@@ -234,7 +234,7 @@ body {
   background: rgba(240,130,13,0.08);
   box-shadow: 0 0 16px var(--orange-glow);
 }
-.source-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.source-btn.disabled { opacity: 0.3; cursor: not-allowed; }
 .source-btn svg { width: 22px; height: 22px; }
 .source-btn .src-label {
   font-size: 11px;
@@ -309,6 +309,15 @@ body {
   color:var(--blue);
   background:var(--blue-glow);
 }
+.np-btn.play-active { background: var(--accent); border-color:var(--accent); color: #000; }
+/* Cover art */
+.np-cover {
+  width: 56px; height: 56px; border-radius: 6px;
+  background: var(--bg3); overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.np-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.np-cover svg { opacity: 0.3; }
 
 /* volume */
 .vol-row {
@@ -938,7 +947,6 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
   .source-grid { grid-template-columns: repeat(3,1fr); }
 }
 </style>
-</head>
 <body>
 
 <!-- SIDEBAR -->
@@ -1039,1412 +1047,63 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
           <div class="source-grid">
             <button class="source-btn active" onclick="setSource(this,'radio')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
-              <span class="src-label">Radio</span><span class="src-sub">Internet</span>
+              <span class="src-label">Radio</span>
+              <span class="src-sub">Internet</span>
             </button>
             <button class="source-btn" onclick="setSource(this,'bluetooth')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
-              <span class="src-label">BT</span><span class="src-sub">Bluetooth</span>
+              <span class="src-label">BT</span>
+              <span class="src-sub">Sink</span>
             </button>
-            <button class="source-btn disabled" title="Niedostępne">
+            <button class="source-btn" onclick="setSource(this,'phono')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
-              <span class="src-label">Phono</span><span class="src-sub">wkrótce</span>
+              <span class="src-label">Phono</span>
+              <span class="src-sub">RIAA</span>
             </button>
-            <button class="source-btn disabled" title="Niedostępne">
+            <button class="source-btn" style="opacity:0.35;pointer-events:none;" title="Niedostępne — brak PCM1808">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-              <span class="src-label">Line In 1</span><span class="src-sub">wkrótce</span>
+              <span class="src-label">Line</span>
+              <span class="src-sub">wkrótce</span>
             </button>
-            <button class="source-btn disabled" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-              <span class="src-label">Line In 2</span><span class="src-sub">wkrótce</span>
-            </button>
-            <button class="source-btn disabled" id="btn-src-cd" title="Brak napędu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
-              <span class="src-label">CD</span><span class="src-sub" id="cd-sub">brak napędu</span>
-            </button>
-            <button class="source-btn disabled" onclick="setSource(this,'spdif')" title="Niedostępne">
+            <button class="source-btn disabled" onclick="setSource(this,'spdif')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12h20M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
-              <span class="src-label">S/PDIF</span><span class="src-sub">wkrótce</span>
+              <span class="src-label">S/PDIF</span>
+              <span class="src-sub">Digital</span>
             </button>
-          </div></div>
-        </div>
-
-        <!-- Volume -->
-        <div class="card">
-          <div class="vol-row" style="margin-bottom:16px;">
-            <span class="vol-label">Volume</span>
-            <div class="slider-wrap">
-              <div class="vol-fill" id="vol-fill" style="width:72%"></div>
-              <input type="range" min="0" max="100" value="72" id="vol-slider" oninput="updateVolume(this.value)">
-            </div>
-            <span class="vol-value" id="vol-value">72</span>
-          </div>
-
-        </div>
-        <!-- Toggles -->
-        <div class="card" style="padding:14px 20px;">
-          <div class="toggles-row">
-            <div class="toggle-chip on" onclick="toggleChip(this,'vu')" id="chip-vu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="3" height="8" rx="1" fill="currentColor" stroke="none"/><rect x="7" y="5" width="3" height="11" rx="1" fill="currentColor" stroke="none"/><rect x="12" y="3" width="3" height="13" rx="1" fill="currentColor" stroke="none"/><rect x="17" y="6" width="3" height="10" rx="1" fill="currentColor" stroke="none"/></svg>
-              VU Meter
-            </div>
-            <div class="toggle-chip" onclick="toggleChip(this,'spectrum')" id="chip-spectrum">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              Spectrum
-            </div>
-            <div class="toggle-chip on" onclick="toggleChip(this,'loudness')" id="chip-loudness">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-              Loudness
-            </div>
           </div>
         </div>
-
-        <!-- Meter (VU / Spectrum) -->
-        <div class="meter-container" id="meter-container">
-          <div class="meter-header">
-            <div class="section-title" style="margin:0">Level Meter</div>
-            <div class="meter-mode-tabs">
-              <div class="meter-tab active" onclick="setMeterMode('vu',this)">VU</div>
-              <div class="meter-tab" onclick="setMeterMode('spectrum',this)">Spectrum</div>
-            </div>
-          </div>
-
-          <div id="vu-display">
-            <div class="vu-channel">
-              <div class="vu-label">L</div>
-              <div class="vu-bar-wrap">
-                <div class="vu-bar-track" id="vu-tl">
-                  <div class="vu-bar-fill" id="vu-l"></div>
-                </div>
-                <div class="vu-peak" id="vu-lp" style="right:100%"></div>
-              </div>
-              <div class="vu-scale"><span>-60</span><span>-18</span><span>-12</span><span>-6</span><span>-3</span><span>0</span></div>
-            </div>
-            <div class="vu-channel">
-              <div class="vu-label">R</div>
-              <div class="vu-bar-wrap">
-                <div class="vu-bar-track" id="vu-tr">
-                  <div class="vu-bar-fill" id="vu-r"></div>
-                </div>
-                <div class="vu-peak" id="vu-rp" style="right:100%"></div>
-              </div>
-              <div class="vu-scale"><span>-60</span><span>-18</span><span>-12</span><span>-6</span><span>-3</span><span>0</span></div>
-            </div>
-          </div>
-
-          <div id="spectrum-display">
-            <canvas id="spectrum-canvas" style="width:100%;height:120px;display:block;"></canvas>
-          </div>
-        </div>
-
-      
 
         <!-- Now playing -->
         <div class="now-playing">
-          <div class="np-icon" id="np-cover">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+          <div class="np-cover" id="np-cover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="28" height="28"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
           </div>
           <div class="np-info">
-            <div class="np-title" id="np-title">TrancePulse</div>
-            <div class="np-sub" id="np-sub">TrancePulse &nbsp;·&nbsp; 1414 kbps &nbsp;·&nbsp; FLAC</div>
-          <div style="display:flex;gap:12px;margin-top:4px;">
-            <span id="np-time-elapsed" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">0:00</span>
-            <span style="color:var(--text3);font-size:11px;">·</span>
-            <span id="np-time-remain" style="font-family:var(--font-mono);font-size:11px;color:var(--blue);">−0:00</span>
-          </div>
+            <div class="np-title" id="np-title">Coldplay — The Scientist</div>
+            <div class="np-sub" id="np-sub">RMF FM &nbsp;·&nbsp; 128 kbps &nbsp;·&nbsp; AAC</div>
           </div>
           <div class="np-transport">
             <button class="np-btn" onclick="ampPrev()" title="Previous">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 5 4 12 11 19 11 5"/><polygon points="19 5 12 12 19 19 19 5"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="11 5 4 12 11 19 11 5"/>
+                <polygon points="19 5 12 12 19 19 19 5"/>
+              </svg>
             </button>
             <button class="np-btn" onclick="ampPlay()" title="Play">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="6 4 20 12 6 20 6 4"/>
+              </svg>
             </button>
             <button class="np-btn" onclick="ampStop()" title="Stop">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+              </svg>
             </button>
             <button class="np-btn" onclick="ampNext()" title="Next">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 5 20 12 13 19 13 5"/><polygon points="5 5 12 12 5 19 5 5"/></svg>
-            </button>
-          </div>
-        </div>
-      </div><!-- /left col -->
-
-      <!-- RIGHT COLUMN -->
-      <div class="amp-right">
-
-        <!-- EQ mini preview -->
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <div class="section-title" style="margin:0">Equalizer</div>
-            <button class="btn" id="btn-direct" style="padding:4px 10px;font-size:11px;" onclick="toggleDirect(this)">Direct</button>
-          </div>
-          <div class="eq-mini" id="eq-mini-display"></div>
-        </div>
-
-        <!-- Quick actions -->
-        <div class="card">
-          <div class="section-title">Quick Actions</div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <button class="btn" style="width:100%;padding:10px;text-align:left;display:flex;align-items:center;gap:10px;" onclick="showPage('radio', document.querySelectorAll('.nav-btn')[1])">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><circle cx="12" cy="12" r="2"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
-              Browse Stations
-            </button>
-            <button class="btn" style="width:100%;padding:10px;text-align:left;display:flex;align-items:center;gap:10px;" onclick="showPage('bluetooth', document.querySelectorAll('.nav-btn')[2])">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
-              Manage Bluetooth
-            </button>
-          </div>
-        </div>
-
-        <!-- System info -->
-        <div class="card" style="padding:16px 20px;">
-          <div class="section-title">System</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="display:flex;justify-content:space-between;font-size:12px;">
-              <span style="color:var(--text3)">IP</span>
-              <span id="sys-ip" style="font-family:var(--font-mono);font-size:12px;">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;">
-              <span style="color:var(--text3)">CPU Temp</span>
-              <span id="sys-temp" style="font-family:var(--font-mono);font-size:12px;">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;">
-              <span style="color:var(--text3)">CPU Load</span>
-              <span id="sys-load" style="font-family:var(--font-mono);font-size:12px;">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;">
-              <span style="color:var(--text3)">Panel</span>
-              <div class="uart-indicator" id="uart-status">
-                <div class="status-dot"></div>
-                <span>Disconnected</span>
-              </div>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;">
-              <span style="color:var(--text3)">Uptime</span>
-              <span id="sys-uptime" style="font-family:var(--font-mono);font-size:12px;">—</span>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /right -->
-    </div><!-- /amp-inner -->
-    </div><!-- /amplifier -->
-
-
-    <!-- ══════════════ RADIO PAGE ══════════════ -->
-    <div class="page" id="page-radio">
-      <div class="two-col">
-        <div>
-          <div class="section-title">Stations</div>
-          <div class="station-list" id="station-list"></div>
-          <div class="card" style="margin-top:16px;">
-            <div class="section-title">Add Station</div>
-            <div class="add-station">
-              <input type="text" class="input-field" id="new-station-name" placeholder="Name">
-              <input type="text" class="input-field" id="new-station-url" placeholder="Stream URL" style="flex:2">
-              <button class="btn primary" onclick="addStation()">Add</button>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="section-title">Favourites</div>
-          <div class="station-list" id="fav-list"></div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- ══════════════ BLUETOOTH PAGE ══════════════ -->
-    <div class="page" id="page-bluetooth">
-      <div class="bt-mode-row">
-        <button class="bt-mode-btn active" onclick="setBtMode('sink',this)">📱 → 🔊 Sink (receive audio)</button>
-        <button class="bt-mode-btn" onclick="setBtMode('source',this)">🔊 → 📢 Source (send audio)</button>
-      </div>
-      <div class="two-col">
-        <div>
-          <div class="section-title">Paired Devices</div>
-          <div id="paired-devices">
-            <div style="font-size:12px;color:var(--text3);padding:8px 0;">Loading...</div>
-          </div>
-        </div>
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <div class="section-title" style="margin:0">Nearby Devices</div>
-            <button class="btn" onclick="scanBt()" id="bt-scan-btn">Scan</button>
-          </div>
-          <div id="bt-scan-results">
-            <div style="font-size:12px;color:var(--text3);padding:8px 0;">Press Scan to discover devices</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- ══════════════ INPUTS PAGE ══════════════ -->
-    <div class="page" id="page-inputs">
-      <div class="section-title" style="margin-bottom:8px;">Streaming</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;">
-        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;" onclick="setSourceFromInput('radio')">
-          <div style="width:36px;height:36px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--blue);flex-shrink:0;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><circle cx="12" cy="12" r="2"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
-          </div>
-          <div><div style="font-weight:600;font-size:14px;">Radio</div><div style="font-size:11px;color:var(--text3);">Internet</div></div>
-        </div>
-        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;" onclick="setSourceFromInput('bluetooth')">
-          <div style="width:36px;height:36px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--blue);flex-shrink:0;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
-          </div>
-          <div><div style="font-weight:600;font-size:14px;">Bluetooth</div><div style="font-size:11px;color:var(--text3);">A2DP Sink</div></div>
-        </div>
-      </div>
-
-      <div class="section-title" style="margin-bottom:8px;">Analog Inputs</div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
-        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
-          <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--orange);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
-          </div>
-          <div style="flex:1"><div style="font-weight:600;font-size:15px;">Phono</div><div style="font-size:12px;color:var(--text3);">RIAA EQ · PCM1808</div></div>
-          <span style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.06em;">ACTIVE</span>
-        </div>
-        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
-          <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-          </div>
-          <div style="flex:1"><div style="font-weight:600;font-size:15px;">Line In 1</div><div style="font-size:12px;color:var(--text3);">PCM1808</div></div>
-        </div>
-        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
-          <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-          </div>
-          <div style="flex:1"><div style="font-weight:600;font-size:15px;">Line In 2</div><div style="font-size:12px;color:var(--text3);">PCM1808</div></div>
-        </div>
-      </div>
-      <div class="section-title">Digital Input</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="card" style="display:flex;align-items:center;gap:12px;padding:14px 16px;opacity:0.4;">
-          <div style="width:36px;height:36px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12h20M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
-          </div>
-          <div><div style="font-weight:600;font-size:14px;">S/PDIF</div><div style="font-size:11px;color:var(--text3);">Wkrótce</div></div>
-        </div>
-        <div class="card" style="display:flex;align-items:center;gap:12px;padding:14px 16px;opacity:0.4;" id="cd-in-card">
-          <div style="width:36px;height:36px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
-          </div>
-          <div><div style="font-weight:600;font-size:14px;">CD</div><div style="font-size:11px;color:var(--text3);" id="cd-in-sub">Brak napędu</div></div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- ══════════════ NETWORK PAGE ══════════════ -->
-    <div class="page" id="page-network">
-      <div class="net-status-bar">
-        <div class="net-status-item"><span class="net-status-label">Status</span><span class="net-status-value" id="net-status-val">—</span></div>
-        <div class="net-status-item"><span class="net-status-label">SSID</span><span class="net-status-value" id="net-ssid-val">—</span></div>
-        <div class="net-status-item"><span class="net-status-label">IP Address</span><span class="net-status-value" id="net-ip-val" style="font-family:var(--font-mono)">—</span></div>
-        <div class="net-status-item"><span class="net-status-label">Signal</span><span class="net-status-value" id="net-signal-val">—</span></div>
-      </div>
-      <div style="display:flex;gap:10px;margin-bottom:12px;">
-        <button class="btn" id="btn-wifi-toggle" style="flex:1;padding:10px;" onclick="toggleWifi()" data-enabled="true">Wyłącz WiFi</button>
-        <button class="btn" style="flex:1;padding:10px;" onclick="disconnectNetwork()">Rozłącz</button>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div class="section-title" style="margin:0">Available Networks</div>
-        <button class="btn" onclick="scanWifi()">Scan</button>
-      </div>
-      <div id="wifi-list"><span style="font-size:12px;color:var(--text3)">Press Scan to search for networks</span></div>
-    </div>
-
-
-    <!-- ══════════════ SETTINGS PAGE ══════════════ -->
-    <div class="page" id="page-settings">
-      <div class="two-col">
-        <div>
-          <div class="card" style="margin-bottom:16px;">
-            <div class="section-title">Equalizer</div>
-            <div class="source-tabs">
-              <div class="source-tab active" onclick="selectEqSource('radio',this)">Radio</div>
-              <div class="source-tab" onclick="selectEqSource('bt',this)">BT</div>
-              <div class="source-tab" onclick="selectEqSource('phono',this)">Phono</div>
-              <div class="source-tab" onclick="selectEqSource('line',this)">Line</div>
-            </div>
-            <div class="eq-full" id="eq-full"></div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-              <button class="btn" onclick="resetEq()">Reset</button>
-              <button class="btn" onclick="setEqPreset('flat')">Flat</button>
-              <button class="btn" onclick="setEqPreset('bass')">Bass+</button>
-              <button class="btn" onclick="setEqPreset('vocal')">Vocal</button>
-              <button class="btn" onclick="setEqPreset('treble')">Treble+</button>
-              <button class="btn" id="preset-user1-btn" onclick="setEqPreset('user1')" style="position:relative">
-                <span id="preset-user1-label">User 1</span>
-              </button>
-              <button class="btn" id="preset-user2-btn" onclick="setEqPreset('user2')" style="position:relative">
-                <span id="preset-user2-label">User 2</span>
-              </button>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-              <button class="btn" style="font-size:11px;" onclick="saveUserPreset('user1')">Save → <span id="save-user1-label">User 1</span></button>
-              <button class="btn" style="font-size:11px;" onclick="saveUserPreset('user2')">Save → <span id="save-user2-label">User 2</span></button>
-              <button class="btn" style="font-size:11px;" onclick="renameUserPreset('user1')">Rename User 1</button>
-              <button class="btn" style="font-size:11px;" onclick="renameUserPreset('user2')">Rename User 2</button>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="card" style="margin-bottom:16px;">
-            <div class="section-title">Audio</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Loudness</div><div class="settings-sub">Bass/treble boost at low volumes</div></div>
-              <div class="toggle-sw on" id="sw-loudness" onclick="toggleSw(this,'loudness')"></div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Auto Gain</div><div class="settings-sub">Automatyczne obniżanie gainu przy CLIP</div></div>
-              <div class="toggle-sw" id="sw-autogain" onclick="toggleSw(this,'autogain')"></div>
-            </div>
-
-          </div>
-
-          <div class="card">
-            <div class="section-title">Gain wejść</div>
-            <div id="source-gains-list">
-              <!-- wypełniane przez JS -->
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="section-title">System</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Panel (RP2040)</div></div>
-              <div class="uart-indicator" id="uart-status"><div class="status-dot"></div><span>Disconnected</span></div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">ALSA Device</div><div class="settings-sub">hw:sndrpihifiberry,0</div></div>
-              <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);">PCM5102</span>
-            </div>
-            <div class="settings-row" style="border-bottom:none;">
-              <div class="settings-label">System</div>
-              <div style="display:flex;gap:8px;">
-                <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/system/reboot',{method:'POST'})">Reboot</button>
-                <button class="btn" style="color:var(--orange);border-color:var(--orange);" onclick="if(confirm('Shutdown?')) fetch('/api/system/shutdown',{method:'POST'}).then(()=>{document.body.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#fff;font-size:18px;\'>Wyłączanie PylonisAmp…</div>';})">Shutdown</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-  </div><!-- /content -->
-</div><!-- /main -->
-
-<script>
-/* ── State ─────────────────────────────────────── */
-const state = {
-  source: 'radio',
-  volume: 75,
-  eqSource: 'radio',
-  eqValues: {
-    radio:      [0, 2, 3, 2, 0,-1, 0, 1, 2, 1],
-    bluetooth:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    phono:      [3, 2, 1, 0, 0, 0,-1,-1, 0, 1],
-    line1:      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    line2:      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  },
-  stations: [],
-  currentStation: null,
-};
-const EQ_FREQS = ['31','63','125','250','500','1k','2k','4k','8k','16k'];
-
-/* ── API ─────────────────────────────────────────── */
-async function api(path, method='GET', body=null) {
-  const opts = { method, headers: {'Content-Type':'application/json'} };
-  if (body) opts.body = JSON.stringify(body);
-  try {
-    const r = await fetch('/api' + path, opts);
-    return r.json();
-  } catch(e) { console.error('API error', path, e); return {}; }
-}
-
-/* ── Navigation ──────────────────────────────────── */
-function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const pageEl = document.getElementById('page-' + id);
-  pageEl.classList.add('active');
-  pageEl.style.display = (id === 'amplifier') ? 'grid' : 'block';
-  pageEl.scrollTop = 0;
-  if (btn) btn.classList.add('active');
-  const titles = { amplifier:'Amplifier', radio:'Radio', bluetooth:'Bluetooth',
-                   inputs:'Inputs', network:'Network', settings:'Settings' };
-  document.getElementById('tb-section').textContent = titles[id] || id;
-  if (id === 'bluetooth') loadPairedDevices();
-  // Meters: stop timer gdy wychodzimy, restart gdy wracamy na amplifier
-  if (id === 'amplifier') {
-    // Wymuś restart — kasuj timer żeby startSpectrum() mógł uruchomić nowy
-    if (_vuTimer) { clearInterval(_vuTimer); _vuTimer = null; }
-    if (_specRaf) { cancelAnimationFrame(_specRaf); _specRaf = null; }
-    initMeterMode();   // przywróć aktywny tryb (VU lub Spectrum)
-    startSpectrum();   // uruchom timer danych
-  } else {
-    stopSpectrum();    // zwolnij zasoby gdy nie na amplifier
-  }
-}
-async function loadPairedDevices() {
-  const data = await api('/bluetooth/devices');
-  const el = document.getElementById('paired-devices');
-  if (!el) return;
-  const paired = (data.devices || data.paired || []).filter(d => d.paired);
-  if (!paired.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No paired devices</div>';
-    return;
-  }
-  el.innerHTML = paired.map(d => `
-    <div class="bt-device ${d.connected?'connected':''}" style="margin-bottom:6px;gap:8px;">
-      <div class="bt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-      <div class="bt-info" style="flex:1"><div class="bt-name">${d.name||d.mac}</div><div class="bt-mac">${d.mac}</div></div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        ${d.connected
-          ? `<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green);color:#000;" onclick="btDisconnect('${d.mac}',this)">Disconnect</button>`
-          : `<button class="btn" style="font-size:11px;padding:4px 10px;" onclick="btConnectOrPair('${d.mac}','1',this)">Connect</button>`}
-        <button class="btn" style="font-size:11px;padding:4px 8px;background:transparent;border:1px solid var(--red);color:var(--red);" onclick="btUnpair('${d.mac}',this)" title="Unpair">✕</button>
-      </div>
-    </div>`).join('');
-}
-async function btDisconnect(mac, btn) {
-  btn.disabled = true; btn.textContent = '...';
-  await api('/bluetooth/disconnect','POST',{mac});
-  loadPairedDevices();
-}
-async function btUnpair(mac, btn) {
-  if (!confirm('Unpair ' + mac + '?')) return;
-  btn.disabled = true;
-  await api('/bluetooth/unpair','POST',{mac});
-  loadPairedDevices();
-}
-
-/* ── Source ──────────────────────────────────────── */
-async function setSource(btn, src) {
-  if (btn.classList.contains('disabled')) return;
-  document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.source = src;
-  await api('/source','POST',{source: src});
-}
-function setSourceFromInput(src) {
-  state.source = src;
-  document.querySelectorAll('.source-btn').forEach(b => {
-    b.classList.toggle('active', (b.getAttribute('onclick')||'').includes("'"+src+"'"));
-  });
-  showPage('amplifier', document.querySelector('.nav-btn'));
-}
-
-/* ── Volume ──────────────────────────────────────── */
-function updateVolume(v) {
-  state.volume = +v;
-  document.getElementById('vol-value').textContent = v;
-  document.getElementById('vol-fill').style.width = v + '%';
-  clearTimeout(updateVolume._t);
-  updateVolume._t = setTimeout(() => api('/volume','POST',{volume:+v}), 200);
-}
-
-/* ── Toggles ─────────────────────────────────────── */
-function toggleChip(el, key) {
-  if (key === 'vu' || key === 'spectrum') {
-    // Radio behaviour — tylko jeden aktywny
-    const chipVu = document.getElementById('chip-vu');
-    const chipSp = document.getElementById('chip-spectrum');
-    const wasOn = el.classList.contains('on');
-    // Wyłącz oba, potem włącz kliknięty (jeśli nie był aktywny)
-    chipVu.classList.remove('on');
-    chipSp.classList.remove('on');
-    if (!wasOn) el.classList.add('on');  // toggle off jeśli kliknięto aktywny
-    const spOn = chipSp.classList.contains('on');
-    const vuOn = chipVu.classList.contains('on');
-    const active = vuOn || spOn;
-    document.getElementById('meter-container').style.display = active ? '' : 'none';
-    if (active) {
-      setMeterMode(spOn ? 'spectrum' : 'vu', null);
-    } else {
-      stopSpectrum();
-    }
-  } else if (key === 'loudness') {
-    el.classList.toggle('on');
-    const on = el.classList.contains('on');
-    const sw = document.getElementById('sw-loudness');
-    if (sw) sw.classList.toggle('on', on);
-    api('/setting','POST',{key:'loudness', value: on});
-  } else {
-    el.classList.toggle('on');
-  }
-}
-function toggleSw(el, key) {
-  el.classList.toggle('on');
-  const on = el.classList.contains('on');
-  if (key === 'loudness') {
-    const chip = document.getElementById('chip-loudness');
-    if (chip) chip.classList.toggle('on', on);
-    api('/setting','POST',{key:'loudness', value: on});
-  } else if (key === 'mono' || key === 'autogain') {
-    api('/setting','POST',{key: key, value: on});
-  }
-}
-
-/* ── Meter ───────────────────────────────────────── */
-function initMeterMode() {
-  const activeTab = document.querySelector('.meter-tab.active');
-  if (activeTab) {
-    const mode = activeTab.getAttribute('onclick')?.match(/setMeterMode\('(\w+)/)?.[1]
-      || (activeTab.textContent.trim().toLowerCase().includes('spectrum') ? 'spectrum' : 'vu');
-    setMeterMode(mode, activeTab);
-  } else {
-    setMeterMode('vu', document.querySelector('.meter-tab'));
-  }
-}
-
-function setMeterMode(mode, btn) {
-  document.querySelectorAll('.meter-tab').forEach(t => t.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  const vuEl   = document.getElementById('vu-display');
-  const spEl   = document.getElementById('spectrum-display');
-  if (vuEl) vuEl.style.display   = (mode === 'vu')       ? 'flex' : 'none';
-  if (spEl) spEl.style.display   = (mode === 'spectrum') ? 'block' : 'none';
-
-  // Zatrzymaj RAF spectrum jeśli przełączamy na VU
-  if (mode !== 'spectrum' && _specRaf) {
-    cancelAnimationFrame(_specRaf);
-    _specRaf = null;
-  }
-  // Uruchom RAF spectrum gdy mode=spectrum (zawsze od nowa po powrocie)
-  if (mode === 'spectrum') {
-    if (_specRaf) cancelAnimationFrame(_specRaf);
-    _specRaf = requestAnimationFrame(_specDraw);
-  }
-
-  startSpectrum();  // zawsze uruchom timer danych (VU + spectrum)
-}
-
-/* VU meter — dane z GPylonisAmp /api/level */
-let _vuTimer = null;
-
-function resetMeters() {
-  _setVU(-60, -60, -60, -60);
-}
-
-// VU peak hold — śledzi max RMS z ostatnich 2s
-const VU_PEAK_HOLD = 800;    // ms trzymania
-const VU_PEAK_FALL = 2.0;    // dB per tick (33ms) ≈ 60 dB/s
-let _vuPeakL = -60, _vuPeakR = -60;
-let _vuPeakLt = 0,  _vuPeakRt = 0;
-let _vuLastRmsL = -60, _vuLastRmsR = -60;
-
-function _setVU(rmsL, rmsR, peakL, peakR) {
-  // VU metr: skala -60..0 dBFS, marker 0VU = -18 dBFS
-  const toP = db => Math.max(0, Math.min(100, (db + 60) / 60 * 100));
-  const tL = document.getElementById('vu-tl');
-  const tR = document.getElementById('vu-tr');
-  const lp = document.getElementById('vu-lp');
-  const rp = document.getElementById('vu-rp');
-  if (!tL) return;
-  const now = performance.now();
-
-  // RMS bar — bezpośrednio bez smoothing (dynamiczne)
-  _vuLastRmsL = rmsL;
-  _vuLastRmsR = rmsR;
-  tL.style.setProperty('--vu-mask', (100 - toP(rmsL)) + '%');
-  tR.style.setProperty('--vu-mask', (100 - toP(rmsR)) + '%');
-
-  // Peak = max RMS (nie peak z GPylonisAmp który jest zawsze blisko 0dB)
-  // Peak hold: trzymaj VU_PEAK_HOLD ms, potem opadaj VU_PEAK_FALL dB/ms
-  if (rmsL >= _vuPeakL) { _vuPeakL = rmsL; _vuPeakLt = now; }
-  else if (now - _vuPeakLt > VU_PEAK_HOLD) { _vuPeakL = Math.max(-60, _vuPeakL - VU_PEAK_FALL); }
-  if (rmsR >= _vuPeakR) { _vuPeakR = rmsR; _vuPeakRt = now; }
-  else if (now - _vuPeakRt > VU_PEAK_HOLD) { _vuPeakR = Math.max(-60, _vuPeakR - VU_PEAK_FALL); }
-  else if (now - _vuPeakRt > VU_PEAK_HOLD) _vuPeakR -= VU_PEAK_FALL;
-  _vuPeakL = Math.max(-61, Math.min(0, _vuPeakL));
-  _vuPeakR = Math.max(-61, Math.min(0, _vuPeakR));
-  if (lp) lp.style.right = (100 - toP(_vuPeakL)) + '%';
-  if (rp) rp.style.right = (100 - toP(_vuPeakR)) + '%';
-}
-
-async function _vuPoll() {
-  try {
-    const d = await api('/level');
-    if (d) _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
-  } catch(e) {}
-}
-
-/* ── Spectrum analyser (pseudo-FFT z RMS) ── */
-let _specBands = new Float32Array(32).fill(-60);
-let _specPeaks = new Float32Array(32).fill(-60);
-let _specPeakTtl = new Uint8Array(32).fill(0);
-let _specRaf = null;
-let _meterBusy = false;  // guard — nie wysyłaj gdy poprzedni request w locie
-let _specTimer = null;
-let _specLastLevel = {rms_l:-60, rms_r:-60, peak_l:-60, peak_r:-60};
-let _specLastBands = new Array(32).fill(-60);
-
-function _specDraw() {
-  const canvas = document.getElementById('spectrum-canvas');
-  if (!canvas) { _specRaf = null; return; }
-  // Jeśli canvas ukryty — zatrzymaj RAF (setMeterMode go wznowi)
-  if (canvas.offsetParent === null) { _specRaf = null; return; }
-  // Dopasuj rozdzielczość do rozmiaru wyświetlanego
-  const W = canvas.offsetWidth || 300, H = 120;
-  if (canvas.width !== W || canvas.height !== H) { canvas.width=W; canvas.height=H; }
-  const ctx = canvas.getContext('2d');
-  const n = 32;  // 32 pasma: 4 ręczne niskie + 28 logarytmicznych
-  // Pasma ręczne: 0-80, 80-160, 160-320, 320-640 Hz → indeksy 0-3
-  // Reszta logarytmicznie
-  const gap = 2, bw = (W - gap*(n-1)) / n;
-
-  // Użyj prawdziwych danych FFT z GPylonisAmp spectrum lub fallback RMS
-  const hasFft = _specLastBands && _specLastBands.some(v => v > -58);
-  const avgRms = (_specLastLevel.rms_l + _specLastLevel.rms_r) / 2;
-  for (let i = 0; i < n; i++) {
-    let target;
-    if (hasFft) {
-      target = _specLastBands[i] || -60;
-    } else {
-      const pos = i / (n-1);
-      const shape = -8 * Math.pow(pos - 0.35, 2) + 2 + Math.sin(pos * Math.PI) * 4;
-      target = avgRms + shape + (Math.random() * 6 - 3);
-    }
-    // Szybkie wznoszenie, wolne opadanie
-    if (target > _specBands[i]) _specBands[i] += (target - _specBands[i]) * 0.6;
-    else                          _specBands[i] += (target - _specBands[i]) * 0.15;
-    _specBands[i] = Math.max(-60, Math.min(0, _specBands[i]));
-    // Peak hold
-    if (_specBands[i] >= _specPeaks[i]) { _specPeaks[i] = _specBands[i]; _specPeakTtl[i] = 18; }
-    else if (_specPeakTtl[i] > 0) _specPeakTtl[i]--;
-    else _specPeaks[i] -= 0.8;
-    _specPeaks[i] = Math.max(-62, _specPeaks[i]);
-  }
-
-  ctx.clearRect(0, 0, W, H);
-
-  for (let i = 0; i < n; i++) {
-    const x = i * (bw + gap);
-    const pct = Math.max(0, (_specBands[i] + 60) / 60);
-    const h = pct * H;
-    const y = H - h;
-      // Segmented bars — Winamp style, niebieski gradient
-  const segH = 3, segGap = 1;
-  const numSegs = Math.floor(H / (segH + segGap));
-  for (let i = 0; i < n; i++) {
-    const x = i * (bw + gap);
-    const pct = Math.max(0, (_specBands[i] + 60) / 60);
-    const activeSegs = Math.floor(pct * numSegs);
-    for (let s = 0; s < activeSegs; s++) {
-      const posY = H - (s * (segH + segGap)) - segH;
-      const bright = 40 + (s / numSegs) * 60;
-      ctx.fillStyle = `hsl(210, 100%, ${bright}%)`;
-      ctx.fillRect(x, posY, bw, segH);
-    }
-    // Peak tick
-    const pp = Math.max(0, (_specPeaks[i] + 60) / 60);
-    const py = H - Math.floor(pp * numSegs) * (segH + segGap) - segH;
-    if (pp > 0.01) {
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.fillRect(x, py, bw, segH);
-    }
-  }
-  _specRaf = requestAnimationFrame(_specDraw);
-}
-
-function startSpectrum() {
-  if (_vuTimer) return;
-  // Jeden request co 100ms — level + spectrum razem
-  _vuTimer = setInterval(() => {  // 30fps = 33ms
-    if (_meterBusy) return;
-    _meterBusy = true;
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => { ctrl.abort(); _meterBusy = false; }, 80);
-    fetch('/api/meters', {signal: ctrl.signal})
-      .then(r => r.json())
-      .then(d => {
-        clearTimeout(tid);
-        _meterBusy = false;
-        if (d) {
-          _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
-          _specLastLevel = d;
-          if (d.bands) _specLastBands = d.bands;
-        }
-      })
-      .catch(() => { clearTimeout(tid); _meterBusy = false; });
-  }, 33);   // 30fps
-  if (!_specRaf) _specDraw();
-}
-function stopSpectrum() {
-  if (_vuTimer) { clearInterval(_vuTimer); _vuTimer = null; }
-  if (_specRaf) { cancelAnimationFrame(_specRaf); _specRaf = null; }
-  resetMeters();
-}
-
-/* ── EQ ──────────────────────────────────────────── */
-function buildEqMini() {
-  const vals = state.eqValues[state.source] || Array(10).fill(0);
-  const c = document.getElementById('eq-mini-display');
-  if (!c) return;
-  c.innerHTML = EQ_FREQS.map((f,i) => {
-    const v=vals[i]||0, pct=50-(v/12)*46;
-    return `<div class="eq-band"><div class="eq-track"><div class="eq-zero-line"></div><div class="eq-thumb" style="bottom:${100-pct}%"></div></div><div class="eq-freq">${f}</div></div>`;
-  }).join('');
-}
-function buildEqFull() {
-  const vals = state.eqValues[state.eqSource] || Array(10).fill(0);
-  const c = document.getElementById('eq-full');
-  if (!c) return;
-  c.innerHTML = EQ_FREQS.map((f,i) => {
-    const v=vals[i]||0;
-    const posH=v>0?(v/12)*45:0, negH=v<0?(Math.abs(v)/12)*45:0, thumbBot=50-(v/12)*45;
-    return `<div class="eq-full-band">
-      <div class="eq-full-val">${v>0?'+':''}${v}</div>
-      <div class="eq-full-track" onmousedown="eqDragStart(event,${i})">
-        <div class="eq-zero-line"></div>
-        <div class="eq-full-fill-pos" style="height:${posH}%"></div>
-        <div class="eq-full-fill-neg" style="height:${negH}%"></div>
-        <div class="eq-full-thumb" style="bottom:${thumbBot}%"></div>
-      </div>
-      <div class="eq-full-freq">${f}</div>
-    </div>`;
-  }).join('');
-}
-
-let eqDrag=null;
-function eqDragStart(e,band){
-  eqDrag={band,startY:e.clientY,startVal:state.eqValues[state.eqSource][band]};
-  document.addEventListener('mousemove',eqDragMove);
-  document.addEventListener('mouseup',eqDragEnd);
-}
-function eqDragMove(e){
-  if(!eqDrag) return;
-  const dv=Math.round((eqDrag.startY-e.clientY)/5);
-  state.eqValues[state.eqSource][eqDrag.band]=Math.max(-12,Math.min(12,eqDrag.startVal+dv));
-  buildEqFull(); buildEqMini();
-}
-function eqDragEnd(){
-  if(!eqDrag) return;
-  eqDrag=null;
-  document.removeEventListener('mousemove',eqDragMove);
-  document.removeEventListener('mouseup',eqDragEnd);
-  api('/eq/'+state.eqSource,'POST',{gains:state.eqValues[state.eqSource]});
-}
-function selectEqSource(src,btn){
-  state.eqSource=src;
-  document.querySelectorAll('.source-tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  buildEqFull();
-}
-function resetEq(){
-  state.eqValues[state.eqSource]=Array(10).fill(0);
-  buildEqFull(); buildEqMini();
-  api('/eq/'+state.eqSource,'POST',{gains:Array(10).fill(0)});
-}
-const PRESETS={
-  flat:[0,0,0,0,0,0,0,0,0,0], bass:[6,5,4,2,0,0,0,0,0,0],
-  vocal:[-1,-1,0,2,4,4,3,1,0,-1], treble:[0,0,0,0,0,1,2,4,5,6],
-  user1:[0,0,0,0,0,0,0,0,0,0], user2:[0,0,0,0,0,0,0,0,0,0]
-};
-function setEqPreset(p){
-  state.eqValues[state.eqSource]=[...PRESETS[p]];
-  buildEqFull(); buildEqMini();
-  api('/eq/'+state.eqSource,'POST',{gains:PRESETS[p]});
-}
-
-/* ── Stations ────────────────────────────────────── */
-function buildStations() {
-  const list=document.getElementById('station-list');
-  const favList=document.getElementById('fav-list');
-  if(list) list.innerHTML='';
-  if(favList) favList.innerHTML='';
-  if (state.stations.length) {
-    state.stations.forEach(s=>{
-      if(list) list.appendChild(stationEl(s));
-      if(s.fav && favList) favList.appendChild(stationEl(s));
-    });
-  } else {
-    if (list) list.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No stations defined</div>';
-  }
-  if(favList && !favList.children.length)
-    favList.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No favourites yet</div>';
-}
-function stationEl(s) {
-  const div=document.createElement('div');
-  div.className='station-item'+(s.id===state.currentStation?' playing':'');
-  div.innerHTML=`
-    <span class="station-freq">${String(s.id).padStart?String(s.id).substring(0,6):s.id}</span>
-    <span class="station-name">${s.name}</span>
-    <span class="station-genre">${s.genre||''}</span>
-    <div class="fav-star${s.fav?' active':''}" onclick="toggleFav('${s.id}',event)">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="${s.fav?'var(--orange)':'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-    </div>
-    <div class="station-play-btn" onclick="playStation('${s.id}',event)">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    </div>`;
-  return div;
-}
-async function playStation(id, e) {
-  e && e.stopPropagation();
-  state.currentStation = id;
-  const s = state.stations.find(x => x.id === id);
-  if (!s) return;
-  document.getElementById('np-title').textContent = s.name;
-  document.getElementById('np-sub').textContent = s.name + '  ·  ' + (s.bitrate||128) + ' kbps  ·  ' + (s.codec||'MP3');
-  document.getElementById('tb-meta').textContent = s.name;
-  document.getElementById('status-dot').className = 'status-dot playing';
-  document.getElementById('status-text').textContent = 'Buffering...';
-  buildStations();
-  await api('/radio/play','POST',{id});
-}
-async function toggleFav(id, e) {
-  e && e.stopPropagation();
-  const s = state.stations.find(x => x.id === id);
-  if (!s) return;
-  s.fav = !s.fav;
-  buildStations();
-  await api('/radio/stations/'+id+'/favorite','POST',{add: s.fav});
-}
-async function addStation() {
-  const name=document.getElementById('new-station-name').value.trim();
-  const url=document.getElementById('new-station-url').value.trim();
-  if (!name || !url) return;
-  const res = await api('/radio/stations','POST',{name,url,genre:'Custom'});
-  if (res.station) {
-    state.stations.push({id:res.station.id,name:res.station.name,url:res.station.url,
-      genre:res.station.genre||'Custom',fav:false,bitrate:128,codec:'MP3'});
-    document.getElementById('new-station-name').value='';
-    document.getElementById('new-station-url').value='';
-    buildStations();
-  }
-}
-
-/* ── Transport z karty AMP ───────────────────────── */
-function _currentStationIndex() {
-  if (!state.stations.length) return -1;
-  if (!state.currentStation) return 0;
-  const idx = state.stations.findIndex(s => s.id === state.currentStation);
-  return idx >= 0 ? idx : 0;
-}
-async function ampPlay() {
-  if (!state.stations.length) return;
-  const idx = _currentStationIndex();
-  const s = state.stations[idx];
-  if (!s) return;
-  await playStation(s.id);
-}
-async function ampNext() {
-  if (!state.stations.length) return;
-  let idx = _currentStationIndex();
-  idx = (idx + 1) % state.stations.length;
-  const s = state.stations[idx];
-  if (!s) return;
-  await playStation(s.id);
-}
-async function ampPrev() {
-  if (!state.stations.length) return;
-  let idx = _currentStationIndex();
-  idx = (idx - 1 + state.stations.length) % state.stations.length;
-  const s = state.stations[idx];
-  if (!s) return;
-  await playStation(s.id);
-}
-async function ampStop() {
-  await api('/radio/stop','POST');
-  const dot=document.getElementById('status-dot');
-  const txt=document.getElementById('status-text');
-  if(dot) dot.className='status-dot';
-  if(txt) txt.textContent='stopped';
-  const npSub=document.getElementById('np-sub');
-  if (npSub) npSub.textContent='Stopped';
-  isPlaying=false;
-  resetMeters();
-  stopPlayTimer();
-}
-
-/* ── Bluetooth ───────────────────────────────────── */
-async function setBtMode(mode, btn) {
-  document.querySelectorAll('.bt-mode-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  await api('/bluetooth/mode','POST',{mode});
-}
-async function scanBt() {
-  const btn=document.getElementById('bt-scan-btn');
-  btn.innerHTML='<span style="color:var(--blue)">Scanning…</span>';
-  await api('/bluetooth/scan','POST');
-  let tries=6;
-  const poll=setInterval(async()=>{
-    const data=await api('/bluetooth/devices');
-    renderBtScan(data);
-    if(--tries<=0){clearInterval(poll);btn.innerHTML='Scan';}
-  },2000);
-}
-function renderBtScan(data) {
-  const el=document.getElementById('bt-scan-results');
-  if (!el) return;
-  const all = data.paired || [];
-  const unconnected = all.filter(d=>!d.connected);
-  if (!unconnected.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--text3)">No new devices found</div>';
-    return;
-  }
-  el.innerHTML=unconnected.map(d=>`
-    <div class="bt-device" style="margin-top:4px;">
-      <div class="bt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-      <div class="bt-info"><div class="bt-name">${d.name}</div><div class="bt-mac">${d.mac}</div></div>
-      <button class="btn" style="font-size:11px;padding:4px 10px;"
-        onclick="btConnectOrPair('${d.mac}','${d.paired?'1':'0'}',this)">
-        ${d.paired?'Connect':'Pair'}
-      </button>
-    </div>`).join('');
-}
-async function btConnectOrPair(mac, isPaired, btn) {
-  btn.textContent = isPaired==='1' ? 'Connecting…' : 'Pairing…';
-  const endpoint = isPaired==='1' ? '/bluetooth/connect' : '/bluetooth/pair';
-  const r = await api(endpoint,'POST',{mac});
-  btn.textContent = (r.status==='connected'||r.status==='paired') ? '✓ OK' : 'Error';
-}
-
-/* ── Network ─────────────────────────────────────── */
-async function scanWifi() {
-  const data=await api('/network/scan');
-  const list=document.getElementById('wifi-list');
-  if (!list||!data.networks) return;
-  list.innerHTML=data.networks.map(n=>{
-    const sig=n.signal>75?'sig4':n.signal>50?'sig3':n.signal>25?'sig2':'sig1';
-    return `<div class="wifi-item ${sig} ${n.in_use?'connected':''}" style="margin-top:4px;">
-      <span class="wifi-name" style="${n.in_use?'color:var(--blue)':''}">${n.ssid}</span>
-      <div class="wifi-signal"><div class="wifi-bar"></div><div class="wifi-bar"></div><div class="wifi-bar"></div><div class="wifi-bar"></div></div>
-      ${n.in_use?'<span style="font-size:11px;color:var(--blue);font-weight:700;">✓</span>'
-        :`<button class="btn" style="font-size:11px;padding:4px 10px;" onclick="connectWifi('${n.ssid}',this)">Connect</button>`}
-    </div>`;
-  }).join('');
-}
-async function connectWifi(ssid, btn) {
-  const pw=prompt('Password for "'+ssid+'" (empty = open network):');
-  if (pw===null) return;
-  btn.textContent='Connecting…';
-  const r=await api('/network/connect','POST',{ssid,password:pw});
-  btn.textContent=r.status==='connected'?'Connected ✓':'Error';
-}
-
-/* ── Apply status from API ───────────────────────── */
-function applyStatus(data) {
-  // Volume
-  if (data.volume!=null) {
-    const sl=document.getElementById('vol-slider');
-    if(sl) sl.value=data.volume;
-    document.getElementById('vol-value').textContent=data.volume;
-    document.getElementById('vol-fill').style.width=data.volume+'%';
-    state.volume=data.volume;
-  }
-  // Settings toggles
-  if (data.loudness != null) {
-    const chip=document.getElementById('chip-loudness');
-    const sw=document.getElementById('sw-loudness');
-    if(chip) chip.classList.toggle('on', data.loudness);
-    if(sw)   sw.classList.toggle('on', data.loudness);
-  }
-  if (data.direct   != null) applyDirectState(data.direct);
-  if (data.autogain != null) {
-    const sw = document.getElementById('sw-autogain');
-    if (sw) sw.classList.toggle('on', data.autogain);
-  }
-  // Active source buttons
-  if (data.active) {
-    state.source=data.active;
-    document.querySelectorAll('.source-btn').forEach(b=>{
-      b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'"+data.active+"'"));
-    });
-    // Tytuł zakładki: "PylonisAmp · NazwaŹródła"
-    const srcNames = {radio: (data.status&&data.status.station)||'Radio',
-                      bluetooth:'Bluetooth', phono:'Phono',
-                      line1:'Line 1', line2:'Line 2', spdif:'S/PDIF'};
-    document.title = 'PylonisAmp · ' + (srcNames[data.active] || data.active);
-  }
-  // Now playing / metadata
-  const st=data.status||{};
-  const title=st.title||st.station||'';
-  if (title) {
-    const npTitle=document.getElementById('np-title');
-    const npSub=document.getElementById('np-sub');
-    if (npTitle) {
-    if (npTitle.textContent !== title) {
-      npTitle.textContent = title;
-      startPlayTimer(st.duration || 0);
-    }
-  }
-
-    let subParts=[];
-    if (st.station) subParts.push(st.station);
-    const stream=st.stream||{};
-    if (stream.bitrate_kbps) subParts.push(stream.bitrate_kbps+' kbps');
-    if (stream.codec) subParts.push(stream.codec);
-    if (stream.sample_rate) {
-      let srStr = (stream.sample_rate/1000).toFixed(1)+' kHz';
-      if (stream.bit_depth) srStr += '/'+stream.bit_depth+'bit';
-      subParts.push(srStr);
-    }
-    if (stream.channels) subParts.push(stream.channels === 2 ? 'Stereo' : stream.channels+'ch');
-    if (!subParts.length) subParts.push((st.station||data.active||''),(st.state||''));
-    if (npSub) npSub.textContent=subParts.filter(Boolean).join('  ·  ');
-
-    document.getElementById('tb-meta').textContent=title;
-  }
-  // Playing dot / meter gating
-  const playing=st.state==='playing'||st.state==='buffering';
-  isPlaying = !!playing;
-  const dot=document.getElementById('status-dot');
-  const txt=document.getElementById('status-text');
-  if(dot) dot.className='status-dot'+(playing?' playing':'');
-  if(txt) txt.textContent=st.state||'Idle';
-  // System info
-  const net=data.network||{};
-  const sysIp=document.getElementById('sys-ip');
-  const sysTemp=document.getElementById('sys-temp');
-  const sysLoad=document.getElementById('sys-load');
-  const sysUp=document.getElementById('sys-uptime');
-  if(sysIp) sysIp.textContent=net.ip||'—';
-  if(sysTemp) {
-    sysTemp.textContent=data.cpu_temp!=null?data.cpu_temp+'°C':'—';
-    sysTemp.style.color = data.cpu_hot ? 'var(--red)' : 'var(--green)';
-  }
-  if(sysLoad) sysLoad.textContent=data.cpu_load!=null?data.cpu_load.toFixed(0)+'%':'—';
-  if(sysUp)  sysUp.textContent=data.uptime||'—';
-  // UART
-  const uartDot=document.querySelector('#uart-status .status-dot');
-  const uartTxt=document.querySelector('#uart-status span');
-  if(uartDot) uartDot.className='status-dot'+(data.uart?' playing':'');
-  if(uartTxt) uartTxt.textContent=data.uart?'Connected':'Disconnected';
-  // CD detekcja
-  const cdBtn=document.getElementById('btn-src-cd');
-  const cdSub=document.getElementById('cd-sub');
-  if(cdBtn){
-    if(data.cd_ready){
-      cdBtn.classList.remove('disabled'); cdBtn.removeAttribute('title');
-      cdBtn.onclick=function(){setSource(this,'cd');};
-      if(cdSub) cdSub.textContent='gotowy';
-    } else {
-      cdBtn.classList.add('disabled');
-      cdBtn.title=data.cd_disc===false?'Brak płyty':'Brak napędu';
-      cdBtn.onclick=null;
-      if(cdSub) cdSub.textContent=data.cd_disc===false?'brak płyty':'brak napędu';
-    }
-  }
-  const cdInSub=document.getElementById('cd-in-sub');
-  if(cdInSub) cdInSub.textContent=data.cd_ready?'Gotowy':data.cd_disc===false?'Brak płyty':'Brak napędu';
-  // Network page live update
-  const nStatus=document.getElementById('net-status-val');
-  const nSsid=document.getElementById('net-ssid-val');
-  const nIp=document.getElementById('net-ip-val');
-  const nSig=document.getElementById('net-signal-val');
-  if(nStatus){ nStatus.textContent=net.connected?'Connected':'Disconnected'; nStatus.className='net-status-value'+(net.connected?' good':''); }
-  if(nSsid) nSsid.textContent=net.ssid||net.interface||'—';
-  if(nIp)   nIp.textContent=net.ip||'—';
-  if(nSig)  nSig.textContent=net.signal!=null?net.signal+' dBm':'—';
-}
-
-/* ── Init ────────────────────────────────────────── */
-
-// ── Playback Timer ──────────────────────────────────────────────────
-let _playStartTs = 0, _playDuration = 0, _playTimer = null;
-
-function _fmtTime(sec) {
-  if (sec < 0) sec = 0;
-  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
-  return m + ':' + String(s).padStart(2, '0');
-}
-
-function startPlayTimer(durationSec) {
-  stopPlayTimer();
-  _playStartTs = Date.now();
-  _playDuration = durationSec || 0;
-  _playTimer = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - _playStartTs) / 1000);
-    const remain = _playDuration > 0 ? _playDuration - elapsed : 0;
-    const el = document.getElementById('np-time-elapsed');
-    const rl = document.getElementById('np-time-remain');
-    if (el) el.textContent = _fmtTime(elapsed);
-    if (rl) rl.textContent = _playDuration > 0 ? '−' + _fmtTime(remain) : '';
-  }, 1000);
-}
-
-function stopPlayTimer() {
-  if (_playTimer) { clearInterval(_playTimer); _playTimer = null; }
-  const el = document.getElementById('np-time-elapsed');
-  const rl = document.getElementById('np-time-remain');
-  if (el) el.textContent = '0:00';
-  if (rl) rl.textContent = '';
-}
-(async () => {
-  // 1. Stacje
-  const sd=await api('/radio/stations');
-  state.stations=(sd.stations||[]).map(s=>({
-    id:s.id, name:s.name, url:s.url,
-    genre:s.genre||'', fav:s.favorite||false,
-    bitrate:s.bitrate||128, codec:s.codec||'MP3'
-  }));
-  buildStations();
-
-  // 2. Status systemu
-  const status=await api('/status');
-  applyStatus(status);
-
-  // 3. EQ aktywnego źródła
-  const src=status.active||'radio';
-  const eqData=await api('/eq/'+src);
-  if(eqData.gains) state.eqValues[src]=eqData.gains;
-  buildEqMini();
-  buildEqFull();
-
-  // 4. Odświeżaj status co 5s
-  setInterval(async()=>{
-    const s=await api('/status');
-    applyStatus(s);
-  }, 5000);
-})();
-setTimeout(() => {
-  initMeterMode();
-  loadUserPresetNames();
-  loadSourceGains();
-}, 500);
-
-// ── Direct mode ──────────────────────────────────────────
-function toggleDirect(btn) {
-  const active = btn.classList.toggle('active');
-  api('/setting/direct', 'POST', {enabled: active});
-}
-function applyDirectState(direct) {
-  const btn = document.getElementById('btn-direct');
-  if (btn) btn.classList.toggle('active', !!direct);
-}
-
-// ── User presets ──────────────────────────────────────────
-function saveUserPreset(presetId) {
-  const label = document.getElementById('preset-' + presetId + '-label')?.textContent || presetId;
-  if (!confirm('Zapisać bieżące nastawy EQ jako "' + label + '"?')) return;
-  api('/eq/user/' + presetId + '/save', 'POST', {source: state.eqSource || state.source}).then(d => {
-    if (!d || d.error) { alert(d ? d.error : 'Błąd serwera'); return; }
-    if (d.gains) PRESETS[presetId] = d.gains;
-    alert('Zapisano: ' + label);
-  });
-}
-
-function renameUserPreset(presetId) {
-  const current = document.getElementById('preset-' + presetId + '-label')?.textContent || presetId;
-  const newName = prompt('Nowa nazwa:', current);
-  if (!newName || !newName.trim()) return;
-  api('/eq/user/' + presetId + '/name', 'POST', {name: newName.trim()}).then(d => {
-    if (!d || d.error) { alert(d ? d.error : 'Błąd'); return; }
-    ['preset-' + presetId + '-label', 'save-' + presetId + '-label'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = d.name;
-    });
-  });
-}
-function loadUserPresetNames() {
-  api('/eq/presets').then(d => {
-    if (!d) return;
-    // Wczytaj gains user presetów do lokalnego PRESETS
-    if (d.presets) {
-      ['user1','user2'].forEach(id => {
-        if (d.presets[id]) PRESETS[id] = d.presets[id];
-      });
-    }
-    // Zaktualizuj etykiety
-    if (d.names) {
-      Object.entries(d.names).forEach(([id, name]) => {
-        ['preset-' + id + '-label', 'save-' + id + '-label'].forEach(eid => {
-          const el = document.getElementById(eid);
-          if (el) el.textContent = name;
-        });
-      });
-    }
-  });
-}
-
-function toggleWifi() {
-  const btn = document.getElementById('btn-wifi-toggle');
-  const enabled = btn.getAttribute('data-enabled') === 'true';
-  api('/network/wifi', 'POST', {enabled: !enabled}).then(d => {
-    btn.setAttribute('data-enabled', d.wifi ? 'true' : 'false');
-    btn.textContent = d.wifi ? 'Wyłącz WiFi' : 'Włącz WiFi';
-    btn.classList.toggle('wifi-off', !d.wifi);
-    btn.style.borderColor = d.wifi ? '' : 'var(--orange)';
-    btn.style.color = d.wifi ? '' : 'var(--orange)';
-  });
-}
-function disconnectNetwork() {
-  if (!confirm('Rozłączyć od sieci WiFi?')) return;
-  fetch('/api/network/disconnect', {method:'POST'}).catch(()=>{});
-}
-function updateWifiBtn() {
-  api('/network/wifi').then(d => {
-    const btn = document.getElementById('btn-wifi-toggle');
-    if (btn) {
-      btn.setAttribute('data-enabled', d.wifi ? 'true' : 'false');
-      btn.textContent = d.wifi ? 'Wyłącz WiFi' : 'Włącz WiFi';
-      btn.classList.toggle('wifi-off', !d.wifi);
-      btn.style.borderColor = d.wifi ? '' : 'var(--orange)';
-      btn.style.color = d.wifi ? '' : 'var(--orange)';
-    }
-  }).catch(()=>{});
-}
-
-// ── Source Gains ─────────────────────────────────────────
-const SOURCE_NAMES = {radio:'Radio',bluetooth:'Bluetooth',phono:'Phono',line1:'Line 1',line2:'Line 2',spdif:'S/PDIF'};
-
-function buildGainsList(gains) {
-  const list = document.getElementById('source-gains-list');
-  if (!list) return;
-  list.innerHTML = Object.entries(SOURCE_NAMES).map(([id, name]) => {
-    const val = (gains && gains[id] !== undefined) ? gains[id] : 0;
-    return `<div class="settings-row" style="flex-direction:column;align-items:stretch;gap:4px;">
-      <div style="display:flex;justify-content:space-between;">
-        <div class="settings-label">${name}</div>
-        <span id="gain-val-${id}" style="font-family:var(--font-mono);font-size:12px;">${val > 0 ? '+' : ''}${val.toFixed(1)} dB</span>
-      </div>
-      <input type="range" min="-10" max="6" step="0.5" value="${val}"
-        style="width:100%;accent-color:var(--blue);"
-        oninput="updateGainLabel('${id}',this.value)"
-        onchange="setSourceGain('${id}',this.value)">
-    </div>`;
-  }).join('');
-}
-
-function updateGainLabel(id, val) {
-  const el = document.getElementById('gain-val-' + id);
-  if (el) el.textContent = (val > 0 ? '+' : '') + parseFloat(val).toFixed(1) + ' dB';
-}
-
-function setSourceGain(id, val) {
-  api('/source/' + id + '/gain', 'POST', {gain: parseFloat(val)});
-}
-
-function loadSourceGains() {
-  api('/source/gains').then(d => { if (d) buildGainsList(d); });
-}
-</script>
-</body>
-  <button class="nav-btn active" onclick="showPage('amplifier',this)" title="Amplifier">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-    </svg>
-    <span>AMP</span>
-  </button>
-
-  <button class="nav-btn" onclick="showPage('radio',this)" title="Radio">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
-      <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
-      <circle cx="12" cy="12" r="2"/>
-      <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
-      <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
-    </svg>
-    <span>RADIO</span>
-  </button>
-
-  <button class="nav-btn" onclick="showPage('bluetooth',this)" title="Bluetooth">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/>
-    </svg>
-    <span>BT</span>
-  </button>
-
-  <button class="nav-btn" onclick="showPage('inputs',this)" title="Inputs">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <line x1="8" y1="6" x2="21" y2="6"/>
-      <line x1="8" y1="12" x2="21" y2="12"/>
-      <line x1="8" y1="18" x2="21" y2="18"/>
-      <line x1="3" y1="6" x2="3.01" y2="6"/>
-      <line x1="3" y1="12" x2="3.01" y2="12"/>
-      <line x1="3" y1="18" x2="3.01" y2="18"/>
-    </svg>
-    <span>IN</span>
-  </button>
-
-  <button class="nav-btn" onclick="showPage('network',this)" title="Network">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
-      <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
-      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-      <circle cx="12" cy="20" r="1" fill="currentColor"/>
-    </svg>
-    <span>NET</span>
-  </button>
-
-  <button class="nav-btn" onclick="showPage('settings',this)" title="Settings" style="margin-top:auto">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>
-    <span>SET</span>
-  </button>
-</nav>
-
-<!-- MAIN -->
-<div id="main">
-
-  <!-- TOP BAR -->
-  <div id="topbar">
-    <span class="tb-section" id="tb-section">Amplifier</span>
-    <span class="tb-sep">·</span>
-    <span class="tb-meta" id="tb-meta">RMF FM — Alan Morris · Coldplay — The Scientist</span>
-    <div class="tb-status">
-      <div class="status-dot playing" id="status-dot"></div>
-      <span id="status-text">Playing</span>
-    </div>
-  </div>
-
-  <!-- CONTENT -->
-  <div id="content">
-
-    <!-- ══════════════ AMPLIFIER PAGE ══════════════ -->
-    <div class="page active" id="page-amplifier">
-
-      <!-- LEFT COLUMN -->
-      <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
-
-        <!-- Source selector -->
-        <div class="card" style="padding:16px;">
-          <div class="section-title">Source</div>
-          <div class="source-grid">
-            <button class="source-btn active" onclick="setSource(this,'radio')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
-              <span class="src-label">Radio</span><span class="src-sub">Internet</span>
-            </button>
-            <button class="source-btn" onclick="setSource(this,'bluetooth')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
-              <span class="src-label">BT</span><span class="src-sub">Bluetooth</span>
-            </button>
-            <button class="source-btn disabled" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
-              <span class="src-label">Phono</span><span class="src-sub">wkrótce</span>
-            </button>
-            <button class="source-btn disabled" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-              <span class="src-label">Line In 1</span><span class="src-sub">wkrótce</span>
-            </button>
-            <button class="source-btn disabled" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-              <span class="src-label">Line In 2</span><span class="src-sub">wkrótce</span>
-            </button>
-            <button class="source-btn disabled" onclick="setSource(this,'spdif')" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12h20M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
-              <span class="src-label">S/PDIF</span><span class="src-sub">wkrótce</span>
-            </button>
-            <button class="source-btn disabled" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="9" width="13" height="6" rx="1"/><polyline points="15 12 22 8 22 16 15 12"/></svg>
-              <span class="src-label">USB</span><span class="src-sub">wkrótce</span>
-            </button>
-            <button class="source-btn disabled" title="Niedostępne">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>
-              <span class="src-label">CD</span><span class="src-sub">wkrótce</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="13 5 20 12 13 19 13 5"/>
+                <polygon points="5 5 12 12 5 19 5 5"/>
+              </svg>
             </button>
           </div>
         </div>
@@ -2460,7 +1119,6 @@ function loadSourceGains() {
             <span class="vol-value" id="vol-value">72</span>
           </div>
 
-        </div>
         <!-- Toggles -->
         <div class="card" style="padding:14px 20px;">
           <div class="toggles-row">
@@ -2482,11 +1140,7 @@ function loadSourceGains() {
         <!-- Meter (VU / Spectrum) -->
         <div class="meter-container" id="meter-container">
           <div class="meter-header">
-            <div class="section-title" style="margin:0">Level Meter</div>
-            <div class="meter-mode-tabs">
-              <div class="meter-tab active" onclick="setMeterMode('vu',this)">VU</div>
-              <div class="meter-tab" onclick="setMeterMode('spectrum',this)">Spectrum</div>
-            </div>
+            <div class="section-title" style="margin:0" id="meter-title">VU Meter</div>
           </div>
 
           <div id="vu-display">
@@ -2634,20 +1288,20 @@ function loadSourceGains() {
     <div class="page" id="page-inputs">
       <div class="section-title">Analog Inputs</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
-        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
+        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('phono')">
           <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--orange);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/></svg>
           </div>
           <div style="flex:1"><div style="font-weight:600;font-size:15px;">Phono</div><div style="font-size:12px;color:var(--text3);">RIAA EQ · PCM1808</div></div>
           <span style="font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.06em;">ACTIVE</span>
         </div>
-        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
+        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('line1')">
           <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
           </div>
           <div style="flex:1"><div style="font-weight:600;font-size:15px;">Line In 1</div><div style="font-size:12px;color:var(--text3);">PCM1808</div></div>
         </div>
-        <div class="card" style="cursor:not-allowed;opacity:0.4;pointer-events:none;display:flex;align-items:center;gap:16px;padding:16px 20px;">
+        <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:16px;padding:16px 20px;" onclick="setSourceFromInput('line2')">
           <div style="width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text2);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="8" width="16" height="8" rx="2"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
           </div>
@@ -2673,7 +1327,7 @@ function loadSourceGains() {
         <div class="net-status-item"><span class="net-status-label">Signal</span><span class="net-status-value" id="net-signal-val">—</span></div>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:12px;">
-        <button class="btn" id="btn-wifi-toggle" style="flex:1;padding:10px;" onclick="toggleWifi()" data-enabled="true">Wyłącz WiFi</button>
+        <button class="btn" id="btn-wifi-toggle" style="flex:1;padding:10px;" onclick="toggleWifi()">WiFi OFF</button>
         <button class="btn" style="flex:1;padding:10px;" onclick="disconnectNetwork()">Rozłącz</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -2742,19 +1396,17 @@ function loadSourceGains() {
           <div class="card">
             <div class="section-title">System</div>
             <div class="settings-row">
-              <div><div class="settings-label">Panel (RP2040)</div></div>
-              <div class="uart-indicator" id="uart-status"><div class="status-dot"></div><span>Disconnected</span></div>
+              <div><div class="settings-label">Panel (RP2040)</div><div class="settings-sub">UART /dev/ttyAMA0 · 115200</div></div>
+              <div class="uart-indicator"><div class="status-dot playing"></div><span style="font-size:12px;font-family:var(--font-mono);">OK</span></div>
             </div>
             <div class="settings-row">
               <div><div class="settings-label">ALSA Device</div><div class="settings-sub">hw:sndrpihifiberry,0</div></div>
               <span style="font-size:11px;font-family:var(--font-mono);color:var(--green);">PCM5102</span>
             </div>
             <div class="settings-row" style="border-bottom:none;">
-              <div class="settings-label">System</div>
-              <div style="display:flex;gap:8px;">
-                <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/system/reboot',{method:'POST'})">Reboot</button>
-                <button class="btn" style="color:var(--orange);border-color:var(--orange);" onclick="if(confirm('Shutdown?')) fetch('/api/system/shutdown',{method:'POST'}).then(()=>{document.body.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#fff;font-size:18px;\'>Wyłączanie PylonisAmp…</div>';})">Shutdown</button>
-              </div>
+              <div class="settings-label">Reboot</div>
+              <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="if(confirm('Reboot?')) fetch('/api/reboot',{method:'POST'})">Reboot</button>
+              <button class="btn" style="background:var(--bg3);color:var(--orange);border-color:var(--orange);" onclick="if(confirm('Shutdown?')) fetch('/api/shutdown',{method:'POST'}).then(()=>{ document.body.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100vh;color:#fff;font-size:20px;\'>Wyłączanie...</div>'; })">Shutdown</button>
             </div>
           </div>
         </div>
@@ -2779,6 +1431,7 @@ const state = {
   stations: [],
   currentStation: null,
 };
+let isPlaying = false;
 const EQ_FREQS = ['31','63','125','250','500','1k','2k','4k','8k','16k'];
 
 /* ── API ─────────────────────────────────────────── */
@@ -2793,31 +1446,24 @@ async function api(path, method='GET', body=null) {
 
 /* ── Navigation ──────────────────────────────────── */
 function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const pageEl = document.getElementById('page-' + id);
-  pageEl.classList.add('active');
-  pageEl.style.display = (id === 'amplifier') ? 'grid' : 'block';
-  pageEl.scrollTop = 0;
+  document.getElementById('page-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
   const titles = { amplifier:'Amplifier', radio:'Radio', bluetooth:'Bluetooth',
                    inputs:'Inputs', network:'Network', settings:'Settings' };
   document.getElementById('tb-section').textContent = titles[id] || id;
   if (id === 'bluetooth') loadPairedDevices();
-  // Meters: stop timer gdy wychodzimy, restart gdy wracamy na amplifier
   if (id === 'amplifier') {
-    // Wymuś restart — kasuj timer żeby startSpectrum() mógł uruchomić nowy
     if (_vuTimer) { clearInterval(_vuTimer); _vuTimer = null; }
     if (_specRaf) { cancelAnimationFrame(_specRaf); _specRaf = null; }
-    initMeterMode();   // przywróć aktywny tryb (VU lub Spectrum)
-    startSpectrum();   // uruchom timer danych
+    initMeterMode();
+    startSpectrum();
   } else {
-    stopSpectrum();    // zwolnij zasoby gdy nie na amplifier
+    stopSpectrum();
   }
 }
+
 async function loadPairedDevices() {
   const data = await api('/bluetooth/devices');
   const el = document.getElementById('paired-devices');
@@ -2879,23 +1525,24 @@ function updateVolume(v) {
 /* ── Toggles ─────────────────────────────────────── */
 function toggleChip(el, key) {
   if (key === 'vu' || key === 'spectrum') {
-    // Radio behaviour — tylko jeden aktywny
     const chipVu = document.getElementById('chip-vu');
     const chipSp = document.getElementById('chip-spectrum');
     const wasOn = el.classList.contains('on');
-    // Wyłącz oba, potem włącz kliknięty (jeśli nie był aktywny)
     chipVu.classList.remove('on');
     chipSp.classList.remove('on');
-    if (!wasOn) el.classList.add('on');  // toggle off jeśli kliknięto aktywny
+    if (!wasOn) el.classList.add('on');
     const spOn = chipSp.classList.contains('on');
     const vuOn = chipVu.classList.contains('on');
     const active = vuOn || spOn;
     document.getElementById('meter-container').style.display = active ? '' : 'none';
+    const newMode = spOn ? 'spectrum' : (vuOn ? 'vu' : 'off');
     if (active) {
-      setMeterMode(spOn ? 'spectrum' : 'vu', null);
+      setMeterMode(newMode);
     } else {
+      _meterMode = 'off';
       stopSpectrum();
     }
+    api('/setting','POST',{key:'meter_mode', value: newMode});
   } else if (key === 'loudness') {
     el.classList.toggle('on');
     const on = el.classList.contains('on');
@@ -2919,56 +1566,49 @@ function toggleSw(el, key) {
 }
 
 /* ── Meter ───────────────────────────────────────── */
-function initMeterMode() {
-  const activeTab = document.querySelector('.meter-tab.active');
-  if (activeTab) {
-    const mode = activeTab.getAttribute('onclick')?.match(/setMeterMode\('(\w+)/)?.[1]
-      || (activeTab.textContent.trim().toLowerCase().includes('spectrum') ? 'spectrum' : 'vu');
-    setMeterMode(mode, activeTab);
+function initMeterMode(mode) {
+  mode = mode || _meterMode || 'vu';
+  const chipVu = document.getElementById('chip-vu');
+  const chipSp = document.getElementById('chip-spectrum');
+  if (chipVu) chipVu.classList.toggle('on', mode === 'vu');
+  if (chipSp) chipSp.classList.toggle('on', mode === 'spectrum');
+  if (mode === 'off') {
+    document.getElementById('meter-container').style.display = 'none';
+    stopSpectrum();
   } else {
-    setMeterMode('vu', document.querySelector('.meter-tab'));
+    document.getElementById('meter-container').style.display = '';
+    setMeterMode(mode);
   }
 }
 
-function setMeterMode(mode, btn) {
-  document.querySelectorAll('.meter-tab').forEach(t => t.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  const vuEl   = document.getElementById('vu-display');
-  const spEl   = document.getElementById('spectrum-display');
+function setMeterMode(mode) {
+  const vuEl = document.getElementById('vu-display');
+  const spEl = document.getElementById('spectrum-display');
+  const title = document.getElementById('meter-title');
   if (vuEl) vuEl.style.display   = (mode === 'vu')       ? 'flex' : 'none';
   if (spEl) spEl.style.display   = (mode === 'spectrum') ? 'block' : 'none';
-
-  // Zatrzymaj RAF spectrum jeśli przełączamy na VU
-  if (mode !== 'spectrum' && _specRaf) {
-    cancelAnimationFrame(_specRaf);
-    _specRaf = null;
-  }
-  // Uruchom RAF spectrum gdy mode=spectrum (zawsze od nowa po powrocie)
+  if (title) title.textContent   = (mode === 'spectrum') ? 'Spectrum' : 'VU Meter';
+  if (mode !== 'spectrum' && _specRaf) { cancelAnimationFrame(_specRaf); _specRaf = null; }
   if (mode === 'spectrum') {
     if (_specRaf) cancelAnimationFrame(_specRaf);
     _specRaf = requestAnimationFrame(_specDraw);
   }
-
-  startSpectrum();  // zawsze uruchom timer danych (VU + spectrum)
+  _meterMode = mode;
+  startSpectrum();
 }
 
-/* VU meter — dane z GPylonisAmp /api/level */
+/* ── VU Meter ────────────────────────────────────── */
 let _vuTimer = null;
+let _meterMode = 'vu';
 
-function resetMeters() {
-  _setVU(-60, -60, -60, -60);
-}
+function resetMeters() { _setVU(-60, -60, -60, -60); }
 
-// VU peak hold — śledzi max RMS z ostatnich 2s
-const VU_PEAK_HOLD = 800;    // ms trzymania
-const VU_PEAK_FALL = 2.0;    // dB per tick (33ms) ≈ 60 dB/s
+const VU_PEAK_HOLD = 800;
+const VU_PEAK_FALL = 2.0;
 let _vuPeakL = -60, _vuPeakR = -60;
 let _vuPeakLt = 0,  _vuPeakRt = 0;
-let _vuLastRmsL = -60, _vuLastRmsR = -60;
 
 function _setVU(rmsL, rmsR, peakL, peakR) {
-  // VU metr: skala -60..0 dBFS, marker 0VU = -18 dBFS
   const toP = db => Math.max(0, Math.min(100, (db + 60) / 60 * 100));
   const tL = document.getElementById('vu-tl');
   const tR = document.getElementById('vu-tr');
@@ -2976,58 +1616,35 @@ function _setVU(rmsL, rmsR, peakL, peakR) {
   const rp = document.getElementById('vu-rp');
   if (!tL) return;
   const now = performance.now();
-
-  // RMS bar — bezpośrednio bez smoothing (dynamiczne)
-  _vuLastRmsL = rmsL;
-  _vuLastRmsR = rmsR;
   tL.style.setProperty('--vu-mask', (100 - toP(rmsL)) + '%');
   tR.style.setProperty('--vu-mask', (100 - toP(rmsR)) + '%');
-
-  // Peak = max RMS (nie peak z GPylonisAmp który jest zawsze blisko 0dB)
-  // Peak hold: trzymaj VU_PEAK_HOLD ms, potem opadaj VU_PEAK_FALL dB/ms
   if (rmsL >= _vuPeakL) { _vuPeakL = rmsL; _vuPeakLt = now; }
   else if (now - _vuPeakLt > VU_PEAK_HOLD) { _vuPeakL = Math.max(-60, _vuPeakL - VU_PEAK_FALL); }
   if (rmsR >= _vuPeakR) { _vuPeakR = rmsR; _vuPeakRt = now; }
   else if (now - _vuPeakRt > VU_PEAK_HOLD) { _vuPeakR = Math.max(-60, _vuPeakR - VU_PEAK_FALL); }
-  else if (now - _vuPeakRt > VU_PEAK_HOLD) _vuPeakR -= VU_PEAK_FALL;
   _vuPeakL = Math.max(-61, Math.min(0, _vuPeakL));
   _vuPeakR = Math.max(-61, Math.min(0, _vuPeakR));
   if (lp) lp.style.right = (100 - toP(_vuPeakL)) + '%';
   if (rp) rp.style.right = (100 - toP(_vuPeakR)) + '%';
 }
 
-async function _vuPoll() {
-  try {
-    const d = await api('/level');
-    if (d) _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
-  } catch(e) {}
-}
-
-/* ── Spectrum analyser (pseudo-FFT z RMS) ── */
-let _specBands = new Float32Array(32).fill(-60);
-let _specPeaks = new Float32Array(32).fill(-60);
+/* ── Spectrum ────────────────────────────────────── */
+let _specBands   = new Float32Array(32).fill(-60);
+let _specPeaks   = new Float32Array(32).fill(-60);
 let _specPeakTtl = new Uint8Array(32).fill(0);
-let _specRaf = null;
-let _meterBusy = false;  // guard — nie wysyłaj gdy poprzedni request w locie
-let _specTimer = null;
+let _specRaf     = null;
+let _meterBusy   = false;
 let _specLastLevel = {rms_l:-60, rms_r:-60, peak_l:-60, peak_r:-60};
 let _specLastBands = new Array(32).fill(-60);
 
 function _specDraw() {
   const canvas = document.getElementById('spectrum-canvas');
   if (!canvas) { _specRaf = null; return; }
-  // Jeśli canvas ukryty — zatrzymaj RAF (setMeterMode go wznowi)
   if (canvas.offsetParent === null) { _specRaf = null; return; }
-  // Dopasuj rozdzielczość do rozmiaru wyświetlanego
   const W = canvas.offsetWidth || 300, H = 120;
   if (canvas.width !== W || canvas.height !== H) { canvas.width=W; canvas.height=H; }
   const ctx = canvas.getContext('2d');
-  const n = 32;  // 32 pasma: 4 ręczne niskie + 28 logarytmicznych
-  // Pasma ręczne: 0-80, 80-160, 160-320, 320-640 Hz → indeksy 0-3
-  // Reszta logarytmicznie
-  const gap = 2, bw = (W - gap*(n-1)) / n;
-
-  // Użyj prawdziwych danych FFT z GPylonisAmp spectrum lub fallback RMS
+  const n = 32, gap = 2, bw = (W - gap*(n-1)) / n;
   const hasFft = _specLastBands && _specLastBands.some(v => v > -58);
   const avgRms = (_specLastLevel.rms_l + _specLastLevel.rms_r) / 2;
   for (let i = 0; i < n; i++) {
@@ -3039,34 +1656,27 @@ function _specDraw() {
       const shape = -8 * Math.pow(pos - 0.35, 2) + 2 + Math.sin(pos * Math.PI) * 4;
       target = avgRms + shape + (Math.random() * 6 - 3);
     }
-    // Szybkie wznoszenie, wolne opadanie
     if (target > _specBands[i]) _specBands[i] += (target - _specBands[i]) * 0.6;
-    else                          _specBands[i] += (target - _specBands[i]) * 0.15;
+    else                         _specBands[i] += (target - _specBands[i]) * 0.15;
     _specBands[i] = Math.max(-60, Math.min(0, _specBands[i]));
-    // Peak hold
     if (_specBands[i] >= _specPeaks[i]) { _specPeaks[i] = _specBands[i]; _specPeakTtl[i] = 18; }
     else if (_specPeakTtl[i] > 0) _specPeakTtl[i]--;
     else _specPeaks[i] -= 0.8;
     _specPeaks[i] = Math.max(-62, _specPeaks[i]);
   }
-
   ctx.clearRect(0, 0, W, H);
-
   for (let i = 0; i < n; i++) {
     const x = i * (bw + gap);
     const pct = Math.max(0, (_specBands[i] + 60) / 60);
-    const h = pct * H;
-    const y = H - h;
-    // Kolor gradientu jak VU
+    const h = pct * H, y = H - h;
     const grad = ctx.createLinearGradient(0, H, 0, 0);
-    grad.addColorStop(0,    '#1565c0');
-    grad.addColorStop(0.5,  '#1e88e5');
-    grad.addColorStop(0.70, '#e6c300');
-    grad.addColorStop(0.85, '#ff6600');
-    grad.addColorStop(1.0,  '#e53935');
+    grad.addColorStop(0,   '#1565c0');
+    grad.addColorStop(0.5, '#1e88e5');
+    grad.addColorStop(0.70,'#e6c300');
+    grad.addColorStop(0.85,'#ff6600');
+    grad.addColorStop(1.0, '#e53935');
     ctx.fillStyle = grad;
     ctx.fillRect(x, y, bw, h);
-    // Peak tick — biały
     const pp = Math.max(0, (_specPeaks[i] + 60) / 60);
     const py = H - pp * H;
     if (pp > 0.01) {
@@ -3079,8 +1689,7 @@ function _specDraw() {
 
 function startSpectrum() {
   if (_vuTimer) return;
-  // Jeden request co 100ms — level + spectrum razem
-  _vuTimer = setInterval(() => {  // 30fps = 33ms
+  _vuTimer = setInterval(() => {
     if (_meterBusy) return;
     _meterBusy = true;
     const ctrl = new AbortController();
@@ -3088,8 +1697,7 @@ function startSpectrum() {
     fetch('/api/meters', {signal: ctrl.signal})
       .then(r => r.json())
       .then(d => {
-        clearTimeout(tid);
-        _meterBusy = false;
+        clearTimeout(tid); _meterBusy = false;
         if (d) {
           _setVU(d.rms_l, d.rms_r, d.peak_l, d.peak_r);
           _specLastLevel = d;
@@ -3097,7 +1705,7 @@ function startSpectrum() {
         }
       })
       .catch(() => { clearTimeout(tid); _meterBusy = false; });
-  }, 33);   // 30fps
+  }, 33);
   if (!_specRaf) _specDraw();
 }
 function stopSpectrum() {
@@ -3135,7 +1743,6 @@ function buildEqFull() {
     </div>`;
   }).join('');
 }
-
 let eqDrag=null;
 function eqDragStart(e,band){
   eqDrag={band,startY:e.clientY,startVal:state.eqValues[state.eqSource][band]};
@@ -3189,7 +1796,7 @@ function buildStations() {
       if(s.fav && favList) favList.appendChild(stationEl(s));
     });
   } else {
-    if (list) list.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No stations defined</div>';
+    if(list) list.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No stations defined</div>';
   }
   if(favList && !favList.children.length)
     favList.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">No favourites yet</div>';
@@ -3198,7 +1805,7 @@ function stationEl(s) {
   const div=document.createElement('div');
   div.className='station-item'+(s.id===state.currentStation?' playing':'');
   div.innerHTML=`
-    <span class="station-freq">${String(s.id).padStart?String(s.id).substring(0,6):s.id}</span>
+    <span class="station-freq">${String(s.id).substring(0,6)}</span>
     <span class="station-name">${s.name}</span>
     <span class="station-genre">${s.genre||''}</span>
     <div class="fav-star${s.fav?' active':''}" onclick="toggleFav('${s.id}',event)">
@@ -3209,6 +1816,7 @@ function stationEl(s) {
     </div>`;
   return div;
 }
+
 async function playStation(id, e) {
   e && e.stopPropagation();
   state.currentStation = id;
@@ -3219,6 +1827,8 @@ async function playStation(id, e) {
   document.getElementById('tb-meta').textContent = s.name;
   document.getElementById('status-dot').className = 'status-dot playing';
   document.getElementById('status-text').textContent = 'Buffering...';
+  isPlaying = true;
+  _setPlayBtnIcon(true);
   buildStations();
   await api('/radio/play','POST',{id});
 }
@@ -3244,47 +1854,74 @@ async function addStation() {
   }
 }
 
-/* ── Transport z karty AMP ───────────────────────── */
+/* ── Transport (przyciski AMP) ───────────────────── */
+function _setPlayBtnIcon(playing) {
+  const btn  = document.getElementById('btn-amp-play');
+  const icon = document.getElementById('amp-play-icon');
+  if (!btn || !icon) return;
+  if (playing) {
+    btn.classList.add('play-active');
+    // Ikona pauzy
+    icon.innerHTML = '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
+  } else {
+    btn.classList.remove('play-active');
+    // Ikona play
+    icon.innerHTML = '<polygon points="6 4 20 12 6 20 6 4"/>';
+  }
+}
+
 function _currentStationIndex() {
   if (!state.stations.length) return -1;
   if (!state.currentStation) return 0;
   const idx = state.stations.findIndex(s => s.id === state.currentStation);
   return idx >= 0 ? idx : 0;
 }
+
 async function ampPlay() {
+  if (state.source !== 'radio') return;
   if (!state.stations.length) return;
-  const idx = _currentStationIndex();
-  const s = state.stations[idx];
-  if (!s) return;
-  await playStation(s.id);
+  if (isPlaying) {
+    // Działa — zatrzymaj
+    await ampStop();
+  } else {
+    // Wznów ostatnią stację (lub pierwszą)
+    const idx = _currentStationIndex();
+    const s = state.stations[Math.max(0, idx)];
+    if (s) await playStation(s.id);
+  }
+}
+async function ampStop() {
+  await api('/radio/stop','POST');
+  isPlaying = false;
+  _setPlayBtnIcon(false);
+  const dot=document.getElementById('status-dot');
+  const txt=document.getElementById('status-text');
+  if(dot) dot.className='status-dot';
+  if(txt) txt.textContent='Stopped';
+  resetMeters();
 }
 async function ampNext() {
   if (!state.stations.length) return;
   let idx = _currentStationIndex();
   idx = (idx + 1) % state.stations.length;
-  const s = state.stations[idx];
-  if (!s) return;
-  await playStation(s.id);
+  await playStation(state.stations[idx].id);
 }
 async function ampPrev() {
   if (!state.stations.length) return;
   let idx = _currentStationIndex();
   idx = (idx - 1 + state.stations.length) % state.stations.length;
-  const s = state.stations[idx];
-  if (!s) return;
-  await playStation(s.id);
+  await playStation(state.stations[idx].id);
 }
-async function ampStop() {
-  await api('/radio/stop','POST');
-  const dot=document.getElementById('status-dot');
-  const txt=document.getElementById('status-text');
-  if(dot) dot.className='status-dot';
-  if(txt) txt.textContent='stopped';
-  const npSub=document.getElementById('np-sub');
-  if (npSub) npSub.textContent='Stopped';
-  isPlaying=false;
-  resetMeters();
-  stopPlayTimer();
+
+/* ── Cover art ───────────────────────────────────── */
+function setCover(url) {
+  const el = document.getElementById('np-cover');
+  if (!el) return;
+  if (url) {
+    el.innerHTML = `<img src="${url}" alt="cover" onerror="this.parentElement.innerHTML='<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.8\\' width=\\'28\\' height=\\'28\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'10\\'/><polygon points=\\'10 8 16 12 10 16 10 8\\' fill=\\'currentColor\\' stroke=\\'none\\'/></svg>'">`;
+  } else {
+    el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>`;
+  }
 }
 
 /* ── Bluetooth ───────────────────────────────────── */
@@ -3352,10 +1989,20 @@ async function connectWifi(ssid, btn) {
   const r=await api('/network/connect','POST',{ssid,password:pw});
   btn.textContent=r.status==='connected'?'Connected ✓':'Error';
 }
+function toggleWifi() {
+  const btn = document.getElementById('btn-wifi-toggle');
+  const currentlyOff = btn.textContent.trim() === 'WiFi ON';
+  api('/network/wifi', 'POST', {enabled: currentlyOff}).then(d => {
+    btn.textContent = d.wifi ? 'WiFi OFF' : 'WiFi ON';
+  });
+}
+function disconnectNetwork() {
+  if (!confirm('Rozłączyć od sieci WiFi?')) return;
+  fetch('/api/network/disconnect', {method:'POST'}).catch(()=>{});
+}
 
-/* ── Apply status from API ───────────────────────── */
+/* ── Apply status ────────────────────────────────── */
 function applyStatus(data) {
-  // Volume
   if (data.volume!=null) {
     const sl=document.getElementById('vol-slider');
     if(sl) sl.value=data.volume;
@@ -3363,66 +2010,51 @@ function applyStatus(data) {
     document.getElementById('vol-fill').style.width=data.volume+'%';
     state.volume=data.volume;
   }
-  // Settings toggles
   if (data.loudness != null) {
     const chip=document.getElementById('chip-loudness');
     const sw=document.getElementById('sw-loudness');
     if(chip) chip.classList.toggle('on', data.loudness);
     if(sw)   sw.classList.toggle('on', data.loudness);
   }
-  if (data.direct   != null) applyDirectState(data.direct);
+  if (data.direct     != null) applyDirectState(data.direct);
+  if (data.meter_mode != null) initMeterMode(data.meter_mode);
   if (data.autogain != null) {
     const sw = document.getElementById('sw-autogain');
     if (sw) sw.classList.toggle('on', data.autogain);
   }
-  // Active source buttons
   if (data.active) {
     state.source=data.active;
     document.querySelectorAll('.source-btn').forEach(b=>{
       b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'"+data.active+"'"));
     });
-    // Tytuł zakładki: "PylonisAmp · NazwaŹródła"
-    const srcNames = {radio: (data.status&&data.status.station)||'Radio',
-                      bluetooth:'Bluetooth', phono:'Phono',
-                      line1:'Line 1', line2:'Line 2', spdif:'S/PDIF'};
-    document.title = 'PylonisAmp · ' + (srcNames[data.active] || data.active);
   }
-  // Now playing / metadata
   const st=data.status||{};
   const title=st.title||st.station||'';
   if (title) {
     const npTitle=document.getElementById('np-title');
     const npSub=document.getElementById('np-sub');
-    if (npTitle) {
-    if (npTitle.textContent !== title) {
-      npTitle.textContent = title;
-      startPlayTimer(st.duration || 0);
-    }
-  }
-
+    if(npTitle) npTitle.textContent=title;
     let subParts=[];
-    if (st.station) subParts.push(st.station);
+    if(st.station) subParts.push(st.station);
     const stream=st.stream||{};
-    if (stream.bitrate_kbps) subParts.push(stream.bitrate_kbps+' kbps');
-    if (stream.codec) subParts.push(stream.codec);
-    if (stream.sample_rate) {
-      let srStr = (stream.sample_rate/1000).toFixed(1)+' kHz';
-      if (stream.bit_depth) srStr += '/'+stream.bit_depth+'bit';
-      subParts.push(srStr);
-    }
-    if (stream.channels) subParts.push(stream.channels === 2 ? 'Stereo' : stream.channels+'ch');
-    if (!subParts.length) subParts.push((st.station||data.active||''),(st.state||''));
-    if (npSub) npSub.textContent=subParts.filter(Boolean).join('  ·  ');
-
+    if(stream.bitrate_kbps) subParts.push(stream.bitrate_kbps+' kbps');
+    if(stream.codec) subParts.push(stream.codec);
+    if(!subParts.length) subParts.push(st.station||data.active||'', st.state||'');
+    if(npSub) npSub.textContent=subParts.filter(Boolean).join('  ·  ');
     document.getElementById('tb-meta').textContent=title;
   }
-  // Playing dot / meter gating
+  // Sync playing state + play button icon
   const playing=st.state==='playing'||st.state==='buffering';
-  isPlaying = !!playing;
+  if (playing !== isPlaying) {
+    isPlaying = playing;
+    _setPlayBtnIcon(playing);
+  }
   const dot=document.getElementById('status-dot');
   const txt=document.getElementById('status-text');
   if(dot) dot.className='status-dot'+(playing?' playing':'');
   if(txt) txt.textContent=st.state||'Idle';
+  // Zapamiętaj aktualną stację z serwera
+  if (st.station_id) state.currentStation = st.station_id;
   // System info
   const net=data.network||{};
   const sysIp=document.getElementById('sys-ip');
@@ -3430,18 +2062,14 @@ function applyStatus(data) {
   const sysLoad=document.getElementById('sys-load');
   const sysUp=document.getElementById('sys-uptime');
   if(sysIp) sysIp.textContent=net.ip||'—';
-  if(sysTemp) {
-    sysTemp.textContent=data.cpu_temp!=null?data.cpu_temp+'°C':'—';
-    sysTemp.style.color = data.cpu_hot ? 'var(--red)' : 'var(--green)';
-  }
+  if(sysTemp) { sysTemp.textContent=data.cpu_temp!=null?data.cpu_temp+'°C':'—'; sysTemp.style.color=data.cpu_hot?'var(--red)':'var(--green)'; }
   if(sysLoad) sysLoad.textContent=data.cpu_load!=null?data.cpu_load.toFixed(0)+'%':'—';
   if(sysUp)  sysUp.textContent=data.uptime||'—';
-  // UART
   const uartDot=document.querySelector('#uart-status .status-dot');
   const uartTxt=document.querySelector('#uart-status span');
   if(uartDot) uartDot.className='status-dot'+(data.uart?' playing':'');
   if(uartTxt) uartTxt.textContent=data.uart?'Connected':'Disconnected';
-  // Network page live update
+  // Network page
   const nStatus=document.getElementById('net-status-val');
   const nSsid=document.getElementById('net-ssid-val');
   const nIp=document.getElementById('net-ip-val');
@@ -3452,41 +2080,7 @@ function applyStatus(data) {
   if(nSig)  nSig.textContent=net.signal!=null?net.signal+' dBm':'—';
 }
 
-/* ── Init ────────────────────────────────────────── */
-(async () => {
-  // 1. Stacje
-  const sd=await api('/radio/stations');
-  state.stations=(sd.stations||[]).map(s=>({
-    id:s.id, name:s.name, url:s.url,
-    genre:s.genre||'', fav:s.favorite||false,
-    bitrate:s.bitrate||128, codec:s.codec||'MP3'
-  }));
-  buildStations();
-
-  // 2. Status systemu
-  const status=await api('/status');
-  applyStatus(status);
-
-  // 3. EQ aktywnego źródła
-  const src=status.active||'radio';
-  const eqData=await api('/eq/'+src);
-  if(eqData.gains) state.eqValues[src]=eqData.gains;
-  buildEqMini();
-  buildEqFull();
-
-  // 4. Odświeżaj status co 5s
-  setInterval(async()=>{
-    const s=await api('/status');
-    applyStatus(s);
-  }, 5000);
-})();
-setTimeout(() => {
-  initMeterMode();
-  loadUserPresetNames();
-  loadSourceGains();
-}, 500);
-
-// ── Direct mode ──────────────────────────────────────────
+/* ── Direct mode ────────────────────────────────── */
 function toggleDirect(btn) {
   const active = btn.classList.toggle('active');
   api('/setting/direct', 'POST', {enabled: active});
@@ -3496,7 +2090,7 @@ function applyDirectState(direct) {
   if (btn) btn.classList.toggle('active', !!direct);
 }
 
-// ── User presets ──────────────────────────────────────────
+/* ── User presets ────────────────────────────────── */
 function saveUserPreset(presetId) {
   const label = document.getElementById('preset-' + presetId + '-label')?.textContent || presetId;
   if (!confirm('Zapisać bieżące nastawy EQ jako "' + label + '"?')) return;
@@ -3506,7 +2100,6 @@ function saveUserPreset(presetId) {
     alert('Zapisano: ' + label);
   });
 }
-
 function renameUserPreset(presetId) {
   const current = document.getElementById('preset-' + presetId + '-label')?.textContent || presetId;
   const newName = prompt('Nowa nazwa:', current);
@@ -3522,13 +2115,7 @@ function renameUserPreset(presetId) {
 function loadUserPresetNames() {
   api('/eq/presets').then(d => {
     if (!d) return;
-    // Wczytaj gains user presetów do lokalnego PRESETS
-    if (d.presets) {
-      ['user1','user2'].forEach(id => {
-        if (d.presets[id]) PRESETS[id] = d.presets[id];
-      });
-    }
-    // Zaktualizuj etykiety
+    if (d.presets) { ['user1','user2'].forEach(id => { if (d.presets[id]) PRESETS[id] = d.presets[id]; }); }
     if (d.names) {
       Object.entries(d.names).forEach(([id, name]) => {
         ['preset-' + id + '-label', 'save-' + id + '-label'].forEach(eid => {
@@ -3540,37 +2127,8 @@ function loadUserPresetNames() {
   });
 }
 
-function toggleWifi() {
-  const btn = document.getElementById('btn-wifi-toggle');
-  const enabled = btn.getAttribute('data-enabled') === 'true';
-  api('/network/wifi', 'POST', {enabled: !enabled}).then(d => {
-    btn.setAttribute('data-enabled', d.wifi ? 'true' : 'false');
-    btn.textContent = d.wifi ? 'Wyłącz WiFi' : 'Włącz WiFi';
-    btn.classList.toggle('wifi-off', !d.wifi);
-    btn.style.borderColor = d.wifi ? '' : 'var(--orange)';
-    btn.style.color = d.wifi ? '' : 'var(--orange)';
-  });
-}
-function disconnectNetwork() {
-  if (!confirm('Rozłączyć od sieci WiFi?')) return;
-  fetch('/api/network/disconnect', {method:'POST'}).catch(()=>{});
-}
-function updateWifiBtn() {
-  api('/network/wifi').then(d => {
-    const btn = document.getElementById('btn-wifi-toggle');
-    if (btn) {
-      btn.setAttribute('data-enabled', d.wifi ? 'true' : 'false');
-      btn.textContent = d.wifi ? 'Wyłącz WiFi' : 'Włącz WiFi';
-      btn.classList.toggle('wifi-off', !d.wifi);
-      btn.style.borderColor = d.wifi ? '' : 'var(--orange)';
-      btn.style.color = d.wifi ? '' : 'var(--orange)';
-    }
-  }).catch(()=>{});
-}
-
-// ── Source Gains ─────────────────────────────────────────
+/* ── Source Gains ────────────────────────────────── */
 const SOURCE_NAMES = {radio:'Radio',bluetooth:'Bluetooth',phono:'Phono',line1:'Line 1',line2:'Line 2',spdif:'S/PDIF'};
-
 function buildGainsList(gains) {
   const list = document.getElementById('source-gains-list');
   if (!list) return;
@@ -3588,19 +2146,52 @@ function buildGainsList(gains) {
     </div>`;
   }).join('');
 }
-
 function updateGainLabel(id, val) {
   const el = document.getElementById('gain-val-' + id);
   if (el) el.textContent = (val > 0 ? '+' : '') + parseFloat(val).toFixed(1) + ' dB';
 }
-
 function setSourceGain(id, val) {
   api('/source/' + id + '/gain', 'POST', {gain: parseFloat(val)});
 }
-
 function loadSourceGains() {
   api('/source/gains').then(d => { if (d) buildGainsList(d); });
 }
+
+/* ── Init ────────────────────────────────────────── */
+(async () => {
+  const sd = await api('/radio/stations');
+  state.stations = (sd.stations||[]).map(s=>({
+    id:s.id, name:s.name, url:s.url,
+    genre:s.genre||'', fav:s.favorite||false,
+    bitrate:s.bitrate||128, codec:s.codec||'MP3'
+  }));
+  buildStations();
+
+  const status = await api('/status');
+  applyStatus(status);
+
+  // Ustaw currentStation na ostatnią zapamiętaną
+  const lastId = status.last_station_id || (status.status && status.status.station_id);
+  if (lastId) state.currentStation = lastId;
+  else if (state.stations.length) state.currentStation = state.stations[0].id;
+
+  const src = status.active || 'radio';
+  const eqData = await api('/eq/' + src);
+  if (eqData.gains) state.eqValues[src] = eqData.gains;
+  buildEqMini();
+  buildEqFull();
+
+  setInterval(async () => {
+    const s = await api('/status');
+    applyStatus(s);
+  }, 5000);
+})();
+
+setTimeout(() => {
+  initMeterMode();
+  loadUserPresetNames();
+  loadSourceGains();
+}, 500);
 </script>
 </body>
 </html>

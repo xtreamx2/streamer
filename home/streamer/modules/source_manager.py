@@ -1,16 +1,21 @@
-import threading
 #!/usr/bin/env python3
 """
 Source Manager — zarządza aktywnym źródłem audio.
 Jedno źródło aktywne na raz. Przełączanie: deactivate stare → activate nowe.
 """
 
+import threading
 import logging
 import json
 import os
 from typing import Optional, Callable, Dict
-from sources import (AudioSource, RadioSource, BluetoothSource,
-                     PhonoSource, Line1Source, Line2Source, SpdifSource)
+
+from sources.base import AudioSource
+from sources.radio import RadioSource
+from sources.bluetooth import BluetoothSource
+# Zakładając, że pozostałe źródła również znajdują się w katalogu sources/
+from sources.analog import PhonoSource, Line1Source, Line2Source
+from sources.digital import SpdifSource
 
 log = logging.getLogger(__name__)
 
@@ -311,6 +316,9 @@ class SourceManager:
     # ── Callbacks ──────────────────────────────────────────────
 
     def _handle_state(self, source_id: str, state: str):
+        # Resetuj bufor wygładzania przy zmianie stanu
+        if hasattr(self, '_smooth_spectrum'):
+            self._smooth_spectrum = None
         if self._on_state_change:
             self._on_state_change(source_id, state)
 
@@ -320,3 +328,56 @@ class SourceManager:
 
     def _active_id(self) -> Optional[str]:
         return self._active.SOURCE_ID if self._active else None
+
+    def get_spectrum(self) -> list:
+        """Pobiera widmo, normalizuje i mapuje logarytmicznie na pasma (20Hz - 20kHz)."""
+        if not self._active or not hasattr(self._active, 'get_spectrum'):
+            return []
+        
+        raw = self._active.get_spectrum()
+        if not raw:
+            return []
+
+        import math
+        num_bands = 16
+        bands = [0.0] * num_bands
+        n = len(raw)
+        
+        # Częstotliwości logarytmiczne od ok 20Hz do 20kHz
+        # Zakładamy że raw zawiera wartości w dB (np. -60 do 0)
+        # Rozdzielamy biny FFT na pasma w skali logarytmicznej 20Hz-20kHz
+        # Częstotliwości logarytmiczne od ok 20Hz do 20kHz
+        # Mapowanie binów FFT na pasma (logarithmic distribution)
+        # Biny o niższych częstotliwościach są ważniejsze dla percepcji
+        for i in range(1, n):
+            # i/n to skala liniowa. math.log rozkłada to muzycznie.
+            pos_log = math.log10(i) / math.log10(n)
+            band_idx = int(pos_log * num_bands)
+            if band_idx < 0: band_idx = 0
+            if band_idx >= num_bands: band_idx = num_bands - 1
+            
+            val = float(raw[i])
+            # Skalowanie logarytmiczne amplitudy (jeśli raw nie jest w dB)
+            # val = 20 * math.log10(max(1e-6, val))
+            if val > bands[band_idx]:
+                bands[band_idx] = val
+
+        if not hasattr(self, '_smooth_spectrum') or self._smooth_spectrum is None or len(self._smooth_spectrum) != num_bands:
+            self._smooth_spectrum = [0.0] * num_bands
+            
+        for i in range(num_bands):
+            target = bands[i]
+            # EMA Smoothing + Pro Decay
+            if target > self._smooth_spectrum[i]:
+                # Szybki atak: responsywność na rytm
+                self._smooth_spectrum[i] = (self._smooth_spectrum[i] * 0.2) + (target * 0.8)
+            else:
+                # Wolniejszy opad: efekt "analogowy"
+                self._smooth_spectrum[i] *= 0.88
+                self._smooth_spectrum[i] -= 0.2
+            
+            self._smooth_spectrum[i] = max(0.0, self._smooth_spectrum[i])
+            
+            self._smooth_spectrum[i] = max(0.0, self._smooth_spectrum[i])
+            
+        return [int(v) for v in self._smooth_spectrum]
